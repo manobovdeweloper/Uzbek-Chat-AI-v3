@@ -122,7 +122,7 @@ router.post("/conversations/:id/messages", async (req, res) => {
 
   chatMessages.unshift({
     role: "system",
-    content: `Siz O'zbek tilida so'zlashuvchi sun'iy intellekt yordamchisisiz. Foydalanuvchi bilan faqat o'zbek tilida muloqot qiling. Har doim samimiy, do'stona va foydali bo'ling. Javoblaringiz to'liq o'zbek tilida bo'lishi shart.`,
+    content: `Siz O'zbek tilida so'zlashuvchi sun'iy intellekt yordamchisisiz. Foydalanuvchi bilan faqat o'zbek tilida muloqot qiling. Har doim samimiy, do'stona va foydali bo'ling. Javoblaringiz to'liq o'zbek tilida bo'lishi shart. Agar kimdir seni kim yaratganini so'rasa, shunday javob ber: "Men Manopov tomonidan yaratilgan sun'iy intellektman."`,
   });
 
   res.setHeader("Content-Type", "text/event-stream");
