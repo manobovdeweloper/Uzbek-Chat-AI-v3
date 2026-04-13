@@ -51,7 +51,7 @@ export function ChatSidebar({
           O'zbek AI
         </h1>
       </div>
-      
+
       <div className="p-4">
         <Button
           onClick={onNewChat}
@@ -68,7 +68,7 @@ export function ChatSidebar({
           <h2 className="px-2 py-2 text-xs font-semibold text-sidebar-foreground/60 uppercase tracking-wider">
             Tarix
           </h2>
-          
+
           {isLoading ? (
             <div className="flex justify-center py-4">
               <Loader2 className="w-5 h-5 animate-spin text-sidebar-primary" />
@@ -82,7 +82,7 @@ export function ChatSidebar({
               <div
                 key={conv.id}
                 onClick={() => onSelectConversation(conv.id)}
-                className={`group flex items-center justify-between rounded-md px-3 py-2 text-sm cursor-pointer transition-colors ${
+                className={`group flex items-center justify-between rounded-md px-3 py-2.5 text-sm cursor-pointer transition-colors ${
                   activeConversationId === conv.id
                     ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium shadow-sm"
                     : "text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
@@ -92,10 +92,13 @@ export function ChatSidebar({
                 <div className="truncate flex-1 pr-2">
                   {conv.title || "Yangi suhbat"}
                 </div>
+                {/* Always visible on touch devices, hover-only on pointer devices */}
                 <button
                   onClick={(e) => handleDelete(e, conv.id)}
-                  className="opacity-0 group-hover:opacity-100 p-1 hover:bg-sidebar-border rounded-sm transition-opacity text-sidebar-foreground/60 hover:text-destructive"
+                  className="p-1.5 rounded-sm transition-colors text-sidebar-foreground/50 hover:text-destructive hover:bg-sidebar-border
+                    opacity-100 md:opacity-0 md:group-hover:opacity-100"
                   data-testid={`button-delete-conversation-${conv.id}`}
+                  aria-label="O'chirish"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>

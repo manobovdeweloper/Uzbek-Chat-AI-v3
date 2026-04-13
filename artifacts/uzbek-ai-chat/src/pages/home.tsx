@@ -15,6 +15,7 @@ import { useChatStream } from "@/hooks/use-chat-stream";
 
 export default function Home() {
   const [activeConversationId, setActiveConversationId] = useState<number | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: conversations = [], isLoading: isLoadingConversations } = useListOpenaiConversations();
@@ -43,27 +44,24 @@ export default function Home() {
 
   const handleNewChat = useCallback(() => {
     setActiveConversationId(null);
+    setIsSidebarOpen(false);
+  }, []);
+
+  const handleSelectConversation = useCallback((id: number) => {
+    setActiveConversationId(id);
+    setIsSidebarOpen(false);
   }, []);
 
   const handleSendMessage = useCallback(async (content: string) => {
     let currentId = activeConversationId;
     
     if (!currentId) {
-      // Create new conversation first
       try {
         const title = content.length > 30 ? content.substring(0, 30) + '...' : content;
         const newConv = await createConversation.mutateAsync({ data: { title } });
         currentId = newConv.id;
         setActiveConversationId(newConv.id);
-        
         queryClient.invalidateQueries({ queryKey: getListOpenaiConversationsQueryKey() });
-        
-        // Wait a tick for the state to update
-        setTimeout(() => {
-           // We can't use sendMessage from the hook directly here because it closed over the old conversationId
-           // Instead, we rely on the component re-rendering with the new ID, and the user might have to send again
-           // To fix this fully, we can pass currentId directly to a fetch
-        }, 0);
       } catch (err) {
         console.error("Failed to create conversation", err);
         return;
@@ -71,18 +69,12 @@ export default function Home() {
     }
 
     if (currentId) {
-      // Optimistically add user message if we want, or just let stream handle it
-      // For now, we will stream using the hook. 
-      // NOTE: if we just created it, the hook might not have the updated ID yet in this tick.
-      // So we implement the fetch directly here to be safe for the FIRST message.
       if (!activeConversationId) {
-        // Fallback fetch for first message
         const response = await fetch(`/api/openai/conversations/${currentId}/messages`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ content }),
         });
-        
         queryClient.invalidateQueries({ queryKey: getGetOpenaiConversationQueryKey(currentId) });
         queryClient.invalidateQueries({ queryKey: getListOpenaiMessagesQueryKey(currentId) });
       } else {
@@ -92,20 +84,42 @@ export default function Home() {
   }, [activeConversationId, createConversation, queryClient, sendMessage]);
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-background">
-      <ChatSidebar 
-        conversations={conversations}
-        activeConversationId={activeConversationId}
-        onSelectConversation={setActiveConversationId}
-        onNewChat={handleNewChat}
-        isLoading={isLoadingConversations}
-      />
-      <ChatArea 
+    <div className="flex h-screen w-full overflow-hidden bg-background relative">
+      {/* Mobile overlay backdrop */}
+      {isSidebarOpen && (
+        <div
+          className="fixed inset-0 z-20 bg-black/50 md:hidden"
+          onClick={() => setIsSidebarOpen(false)}
+          data-testid="sidebar-backdrop"
+        />
+      )}
+
+      {/* Sidebar — slides in on mobile, always visible on md+ */}
+      <div
+        className={`
+          fixed md:relative z-30 md:z-auto
+          h-full
+          transition-transform duration-300 ease-in-out
+          ${isSidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
+        `}
+      >
+        <ChatSidebar
+          conversations={conversations}
+          activeConversationId={activeConversationId}
+          onSelectConversation={handleSelectConversation}
+          onNewChat={handleNewChat}
+          isLoading={isLoadingConversations}
+        />
+      </div>
+
+      <ChatArea
         messages={activeConversationId ? messages : []}
         streamingMessage={streamingMessage}
         isStreaming={isStreaming}
         onSendMessage={handleSendMessage}
         isLoading={!!activeConversationId && (isLoadingConversation || isLoadingMessages)}
+        onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
+        isSidebarOpen={isSidebarOpen}
       />
     </div>
   );
