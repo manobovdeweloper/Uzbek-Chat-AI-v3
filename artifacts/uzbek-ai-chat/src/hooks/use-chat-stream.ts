@@ -4,9 +4,10 @@ import { OpenaiMessage } from "@workspace/api-client-react";
 interface UseChatStreamOptions {
   conversationId: number;
   onFinished?: () => void;
+  tier?: "free" | "premium";
 }
 
-export function useChatStream({ conversationId, onFinished }: UseChatStreamOptions) {
+export function useChatStream({ conversationId, onFinished, tier }: UseChatStreamOptions) {
   const [streamingMessage, setStreamingMessage] = useState<string>("");
   const [isStreaming, setIsStreaming] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -27,7 +28,7 @@ export function useChatStream({ conversationId, onFinished }: UseChatStreamOptio
         const response = await fetch(`/api/openai/conversations/${conversationId}/messages`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content }),
+          body: JSON.stringify({ content, tier: tier ?? "free" }),
           signal: abortControllerRef.current.signal,
         });
 
@@ -73,7 +74,7 @@ export function useChatStream({ conversationId, onFinished }: UseChatStreamOptio
         }
       }
     },
-    [conversationId, onFinished]
+    [conversationId, onFinished, tier]
   );
 
   return {

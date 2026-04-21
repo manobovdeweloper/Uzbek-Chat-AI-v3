@@ -93,6 +93,7 @@ router.post("/conversations/:id/messages", async (req, res) => {
 
   const conversationId = idParsed.data.id;
   const userContent = bodyParsed.data.content;
+  const tier = (req.body as { tier?: string })?.tier === "premium" ? "premium" : "free";
 
   const [conv] = await db
     .select()
@@ -120,20 +121,27 @@ router.post("/conversations/:id/messages", async (req, res) => {
     content: m.content,
   }));
 
+  const baseSystem = `You are 'Uzbek Chat AI', created by Abdulloh Manopov. You are a polite, accurate, culturally-relevant assistant for Uzbek users. You can help with general questions, coding, creative writing, and translations.
+
+Script matching: if the user writes in Latin script (lotin), reply in Latin; if Cyrillic (kirill), reply in Cyrillic. Default to Uzbek.
+
+If anyone asks who created you, respond: "Meni Abdulloh Manopov yaratgan." ("I was created by Abdulloh Manopov.")`;
+
+  const freeAddendum = `
+
+This user is on the FREE tier:
+- Keep answers concise (max ~200 words).
+- If the user asks for advanced features (PDF analysis, image generation, voice chat, long documents, deep coding), help briefly and gently remind them these are fully available in the Premium Version.
+- Occasionally (every 3rd assistant reply in the conversation history), end your message with a single subtle line on its own:
+"✨ Upgrade to Premium for deeper analysis and unlimited chat!"`;
+
+  const premiumAddendum = `
+
+This user is on the PREMIUM tier — give thorough, in-depth answers without word limits, and never mention upgrades.`;
+
   chatMessages.unshift({
     role: "system",
-    content: `You are the Free Version of 'Uzbek Chat AI'. Your goal is to be helpful, polite, and provide accurate answers in Uzbek. You can assist with general questions, basic coding, and short translations.
-
-Match the script the user writes in: if they write in Latin script (lotin), respond in Latin; if they write in Cyrillic (kirill), respond in Cyrillic. If the user writes in another language, you may respond in that language, but default to Uzbek.
-
-Limitations for Free Users:
-- Provide concise answers (max 200 words).
-- If the user asks for advanced features (image analysis, long documents, or deep coding), gently remind them that these are available in the Premium Version.
-- At the end of every 3rd message in the conversation (i.e., your 3rd reply, 6th reply, 9th reply, etc.), add this subtle footer on a new line: "✨ Upgrade to Premium for $2/month to unlock Unlimited Knowledge and Advanced Features."
-
-To track which reply this is, count the number of assistant messages already in the conversation history before this one, then add 1. If that count is a multiple of 3, append the footer.
-
-If anyone asks who created you, respond: "Men Manopov tomonidan yaratilgan sun'iy intellektman." ("I am an AI created by Manopov.")`,
+    content: baseSystem + (tier === "premium" ? premiumAddendum : freeAddendum),
   });
 
   res.setHeader("Content-Type", "text/event-stream");

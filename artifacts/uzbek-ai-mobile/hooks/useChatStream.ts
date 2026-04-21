@@ -9,7 +9,7 @@ export type ChatMessage = {
   content: string;
 };
 
-export function useChatStream(conversationId: number | null) {
+export function useChatStream(conversationId: number | null, tier: "free" | "premium" = "free") {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [streaming, setStreaming] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -44,7 +44,7 @@ export function useChatStream(conversationId: number | null) {
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ content: content.trim() }),
+            body: JSON.stringify({ content: content.trim(), tier }),
             signal: controller.signal,
           },
         );
@@ -106,7 +106,7 @@ export function useChatStream(conversationId: number | null) {
         abortRef.current = null;
       }
     },
-    [conversationId],
+    [conversationId, tier],
   );
 
   return { messages, setMessages, streaming, isSending, send, reset };

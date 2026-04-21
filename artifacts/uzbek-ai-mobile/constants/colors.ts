@@ -1,61 +1,39 @@
+// Cyberpunk dark theme: deep midnight + neon cyan/magenta/violet accents.
+// Both schemes share the dark cyberpunk palette so the app stays on-brand
+// regardless of system appearance.
+const cyberpunk = {
+  text: "#E6F1FF",
+  tint: "#00F0FF",
+
+  background: "#06060F",
+  foreground: "#E6F1FF",
+
+  card: "#11091F",
+  cardForeground: "#E6F1FF",
+
+  primary: "#00F0FF",
+  primaryForeground: "#06060F",
+
+  secondary: "#FF2BD6",
+  secondaryForeground: "#06060F",
+
+  muted: "#1A0F2E",
+  mutedForeground: "#8A8FB5",
+
+  accent: "#B14CFF",
+  accentForeground: "#06060F",
+
+  destructive: "#FF3B6B",
+  destructiveForeground: "#FFFFFF",
+
+  border: "#2A1A4A",
+  input: "#1A0F2E",
+};
+
 const colors = {
-  light: {
-    text: "#0F172A",
-    tint: "#E8A04A",
-
-    background: "#FAF7F2",
-    foreground: "#1B2E5A",
-
-    card: "#FFFFFF",
-    cardForeground: "#1B2E5A",
-
-    primary: "#1B2E5A",
-    primaryForeground: "#FAF7F2",
-
-    secondary: "#E8A04A",
-    secondaryForeground: "#1B2E5A",
-
-    muted: "#EFE9DF",
-    mutedForeground: "#6B7280",
-
-    accent: "#E8A04A",
-    accentForeground: "#1B2E5A",
-
-    destructive: "#DC2626",
-    destructiveForeground: "#FFFFFF",
-
-    border: "#E5DFD3",
-    input: "#E5DFD3",
-  },
-  dark: {
-    text: "#F1ECDF",
-    tint: "#E8A04A",
-
-    background: "#0F1A30",
-    foreground: "#F1ECDF",
-
-    card: "#172441",
-    cardForeground: "#F1ECDF",
-
-    primary: "#E8A04A",
-    primaryForeground: "#0F1A30",
-
-    secondary: "#1F2D52",
-    secondaryForeground: "#F1ECDF",
-
-    muted: "#1F2D52",
-    mutedForeground: "#9CA3AF",
-
-    accent: "#E8A04A",
-    accentForeground: "#0F1A30",
-
-    destructive: "#EF4444",
-    destructiveForeground: "#FFFFFF",
-
-    border: "#243456",
-    input: "#243456",
-  },
-  radius: 16,
+  light: cyberpunk,
+  dark: cyberpunk,
+  radius: 18,
 };
 
 export default colors;

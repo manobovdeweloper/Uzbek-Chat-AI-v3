@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -23,6 +23,11 @@ import { useColors } from "@/hooks/useColors";
 import { MessageBubble } from "@/components/MessageBubble";
 import { ConversationsSheet } from "@/components/ConversationsSheet";
 import { useChatStream, ChatMessage } from "@/hooks/useChatStream";
+import { usePremium } from "@/contexts/PremiumContext";
+import { useMessageLimit } from "@/hooks/useMessageLimit";
+import { UpgradeModal } from "@/components/UpgradeModal";
+import { DailyLimitModal } from "@/components/DailyLimitModal";
+import { ToolsSheet } from "@/components/ToolsSheet";
 
 export default function ChatScreen() {
   const colors = useColors();
@@ -32,9 +37,17 @@ export default function ChatScreen() {
   const [input, setInput] = useState("");
   const [sheetOpen, setSheetOpen] = useState(false);
   const [loadingConv, setLoadingConv] = useState(false);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [limitModalOpen, setLimitModalOpen] = useState(false);
+  const [toolsOpen, setToolsOpen] = useState(false);
 
-  const { messages, setMessages, streaming, isSending, send, reset } =
-    useChatStream(conversationId);
+  const { isPremium } = usePremium();
+  const { remaining, limitReached, increment, grantBonus, resetsAt, limit } = useMessageLimit();
+
+  const { messages, streaming, isSending, send, reset } = useChatStream(
+    conversationId,
+    isPremium ? "premium" : "free",
+  );
 
   const startNew = useCallback(() => {
     setConversationId(null);
@@ -65,10 +78,18 @@ export default function ChatScreen() {
   const handleSend = useCallback(async () => {
     const content = input.trim();
     if (!content || isSending) return;
+
+    if (!isPremium && limitReached) {
+      setLimitModalOpen(true);
+      return;
+    }
+
     setInput("");
     if (Platform.OS !== "web") {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
+
+    if (!isPremium) increment();
 
     let id = conversationId;
     if (!id) {
@@ -76,17 +97,17 @@ export default function ChatScreen() {
       const conv = await createOpenaiConversation({ title });
       id = conv.id;
       setConversationId(id);
-      qc.invalidateQueries({
-        queryKey: getListOpenaiConversationsQueryKey(),
-      });
+      qc.invalidateQueries({ queryKey: getListOpenaiConversationsQueryKey() });
     }
     await send(content, id);
-    qc.invalidateQueries({
-      queryKey: getListOpenaiConversationsQueryKey(),
-    });
-  }, [input, isSending, conversationId, send, qc]);
+    qc.invalidateQueries({ queryKey: getListOpenaiConversationsQueryKey() });
+  }, [input, isSending, isPremium, limitReached, increment, conversationId, send, qc]);
 
-  // Build inverted list data: streaming bubble first (newest), then reversed messages
+  const handleWatchAd = useCallback(() => {
+    grantBonus(5);
+    setLimitModalOpen(false);
+  }, [grantBonus]);
+
   const listData = useMemo(() => {
     const arr: ChatMessage[] = [...messages];
     if (streaming) {
@@ -114,30 +135,37 @@ export default function ChatScreen() {
           { borderBottomColor: colors.border, backgroundColor: colors.background },
         ]}
       >
-        <Pressable
-          onPress={() => setSheetOpen(true)}
-          hitSlop={10}
-          style={styles.iconBtn}
-        >
+        <Pressable onPress={() => setSheetOpen(true)} hitSlop={10} style={styles.iconBtn}>
           <Feather name="menu" size={22} color={colors.foreground} />
         </Pressable>
         <View style={styles.titleWrap}>
-          <Text style={[styles.title, { color: colors.foreground }]}>
-            O'zbek AI
-          </Text>
+          <Text style={[styles.title, { color: colors.foreground }]}>O'zbek AI</Text>
+          {isPremium ? (
+            <View style={[styles.premiumPill, { backgroundColor: "rgba(0,240,255,0.12)", borderColor: colors.primary }]}>
+              <Feather name="zap" size={9} color={colors.primary} />
+              <Text style={[styles.premiumPillText, { color: colors.primary }]}>PREMIUM</Text>
+            </View>
+          ) : (
+            <Text style={[styles.usageText, { color: colors.mutedForeground }]}>
+              {remaining}/{limit} qoldi
+            </Text>
+          )}
         </View>
+        <Pressable onPress={() => setToolsOpen(true)} hitSlop={10} style={styles.iconBtn}>
+          <Feather name="zap" size={20} color={colors.secondary} />
+        </Pressable>
         <Pressable onPress={startNew} hitSlop={10} style={styles.iconBtn}>
           <Feather name="edit" size={20} color={colors.primary} />
         </Pressable>
       </View>
 
-      <KeyboardAvoidingView
-        behavior="padding"
-        keyboardVerticalOffset={0}
-        style={styles.flex}
-      >
+      <KeyboardAvoidingView behavior="padding" keyboardVerticalOffset={0} style={styles.flex}>
         {showWelcome ? (
-          <Welcome />
+          <Welcome
+            onUpgrade={() => setUpgradeOpen(true)}
+            onTools={() => setToolsOpen(true)}
+            isPremium={isPremium}
+          />
         ) : loadingConv ? (
           <View style={styles.center}>
             <ActivityIndicator color={colors.primary} />
@@ -150,10 +178,30 @@ export default function ChatScreen() {
             keyboardDismissMode="interactive"
             keyboardShouldPersistTaps="handled"
             contentContainerStyle={{ paddingVertical: 12 }}
-            renderItem={({ item }) => (
-              <MessageBubble role={item.role} content={item.content} />
-            )}
+            renderItem={({ item }) => <MessageBubble role={item.role} content={item.content} />}
           />
+        )}
+
+        {/* Watch Ad button when at limit (free tier) */}
+        {!isPremium && limitReached && (
+          <View style={{ paddingHorizontal: 12, paddingTop: 8 }}>
+            <Pressable
+              onPress={handleWatchAd}
+              style={({ pressed }) => [
+                styles.adBtn,
+                {
+                  borderColor: colors.secondary,
+                  backgroundColor: "rgba(255,43,214,0.08)",
+                  opacity: pressed ? 0.8 : 1,
+                },
+              ]}
+            >
+              <Feather name="play-circle" size={16} color={colors.secondary} />
+              <Text style={[styles.adBtnText, { color: colors.secondary }]}>
+                Reklama ko'rish — +5 xabar
+              </Text>
+            </Pressable>
+          </View>
         )}
 
         {/* Input */}
@@ -163,8 +211,7 @@ export default function ChatScreen() {
             {
               borderTopColor: colors.border,
               backgroundColor: colors.background,
-              paddingBottom:
-                Platform.OS === "web" ? 16 : Math.max(insets.bottom, 8),
+              paddingBottom: Platform.OS === "web" ? 16 : Math.max(insets.bottom, 8),
             },
           ]}
         >
@@ -173,21 +220,23 @@ export default function ChatScreen() {
               styles.inputWrap,
               {
                 backgroundColor: colors.card,
-                borderColor: colors.border,
+                borderColor: limitReached && !isPremium ? colors.secondary : colors.border,
               },
             ]}
           >
             <TextInput
               value={input}
               onChangeText={setInput}
-              placeholder="Xabar yozing..."
+              placeholder={
+                limitReached && !isPremium ? "Kunlik limit tugadi..." : "Xabar yozing..."
+              }
               placeholderTextColor={colors.mutedForeground}
               multiline
-              style={[
-                styles.input,
-                { color: colors.foreground },
-              ]}
+              style={[styles.input, { color: colors.foreground }]}
               editable={!isSending}
+              onFocus={() => {
+                if (!isPremium && limitReached) setLimitModalOpen(true);
+              }}
             />
             <Pressable
               onPress={handleSend}
@@ -196,27 +245,19 @@ export default function ChatScreen() {
                 styles.sendBtn,
                 {
                   backgroundColor:
-                    !input.trim() || isSending
-                      ? colors.muted
-                      : colors.primary,
+                    !input.trim() || isSending ? colors.muted : colors.primary,
                   opacity: pressed ? 0.7 : 1,
+                  shadowColor: colors.primary,
                 },
               ]}
             >
               {isSending ? (
-                <ActivityIndicator
-                  size="small"
-                  color={colors.primaryForeground}
-                />
+                <ActivityIndicator size="small" color={colors.primaryForeground} />
               ) : (
                 <Feather
                   name="arrow-up"
                   size={18}
-                  color={
-                    !input.trim()
-                      ? colors.mutedForeground
-                      : colors.primaryForeground
-                  }
+                  color={!input.trim() ? colors.mutedForeground : colors.primaryForeground}
                 />
               )}
             </Pressable>
@@ -231,47 +272,76 @@ export default function ChatScreen() {
         onNew={startNew}
         activeId={conversationId}
       />
+
+      <UpgradeModal visible={upgradeOpen} onClose={() => setUpgradeOpen(false)} />
+      <DailyLimitModal
+        visible={limitModalOpen}
+        onClose={() => setLimitModalOpen(false)}
+        onUpgrade={() => {
+          setLimitModalOpen(false);
+          setUpgradeOpen(true);
+        }}
+        onWatchAd={handleWatchAd}
+        resetsAt={resetsAt}
+        limit={5}
+      />
+      <ToolsSheet
+        visible={toolsOpen}
+        onClose={() => setToolsOpen(false)}
+        onUpgrade={() => {
+          setToolsOpen(false);
+          setUpgradeOpen(true);
+        }}
+      />
     </View>
   );
 }
 
-function Welcome() {
-  const colors = useColors();
+function Welcome({
+  onUpgrade,
+  onTools,
+  isPremium,
+}: {
+  onUpgrade: () => void;
+  onTools: () => void;
+  isPremium: boolean;
+}) {
+  const c = useColors();
   return (
     <View style={styles.center}>
       <View
         style={[
-          styles.avatar,
-          { backgroundColor: colors.muted, borderColor: colors.border },
+          styles.avatarRing,
+          { borderColor: c.primary, shadowColor: c.primary },
         ]}
       >
-        <Text
-          style={{
-            color: colors.primary,
-            fontSize: 28,
-            fontFamily: "Inter_700Bold",
-          }}
-        >
-          O'z
-        </Text>
+        <View style={[styles.avatar, { backgroundColor: c.card, borderColor: c.primary }]}>
+          <Text style={{ color: c.primary, fontSize: 28, fontFamily: "Inter_700Bold" }}>O'z</Text>
+        </View>
       </View>
-      <Text
-        style={[
-          styles.welcomeTitle,
-          { color: colors.foreground },
-        ]}
-      >
-        Xush kelibsiz!
+      <Text style={[styles.welcomeTitle, { color: c.foreground }]}>Xush kelibsiz!</Text>
+      <Text style={[styles.welcomeSub, { color: c.mutedForeground }]}>
+        Men sizning shaxsiy sun'iy intellekt yordamchingizman.{"\n"}Qanday yordam bera olaman?
       </Text>
-      <Text
-        style={[
-          styles.welcomeSub,
-          { color: colors.mutedForeground },
-        ]}
-      >
-        Men sizning shaxsiy sun'iy intellekt yordamchingizman.{"\n"}Qanday yordam
-        bera olaman?
-      </Text>
+
+      <View style={styles.welcomeActions}>
+        <Pressable
+          onPress={onTools}
+          style={[styles.welcomeChip, { borderColor: c.secondary, backgroundColor: "rgba(255,43,214,0.08)" }]}
+        >
+          <Feather name="zap" size={14} color={c.secondary} />
+          <Text style={[styles.welcomeChipText, { color: c.secondary }]}>Ilg'or vositalar</Text>
+        </Pressable>
+        {!isPremium && (
+          <Pressable
+            onPress={onUpgrade}
+            style={[styles.welcomeChip, { borderColor: c.primary, backgroundColor: "rgba(0,240,255,0.08)" }]}
+          >
+            <Feather name="star" size={14} color={c.primary} />
+            <Text style={[styles.welcomeChipText, { color: c.primary }]}>Premiumga o'tish</Text>
+          </Pressable>
+        )}
+      </View>
     </View>
   );
 }
@@ -289,15 +359,33 @@ const styles = StyleSheet.create({
   },
   iconBtn: { padding: 8, minWidth: 38, alignItems: "center" },
   titleWrap: { flex: 1, alignItems: "center" },
-  title: {
-    fontSize: 17,
-    fontFamily: "Inter_600SemiBold",
+  title: { fontSize: 17, fontFamily: "Inter_600SemiBold" },
+  usageText: { fontSize: 10.5, fontFamily: "Inter_500Medium", marginTop: 2 },
+  premiumPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 10,
+    borderWidth: 1,
+    marginTop: 3,
   },
+  premiumPillText: { fontSize: 9, fontFamily: "Inter_700Bold", letterSpacing: 0.8 },
   center: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 32,
+  },
+  avatarRing: {
+    padding: 4,
+    borderRadius: 44,
+    borderWidth: 1.5,
+    marginBottom: 16,
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 0 },
   },
   avatar: {
     width: 72,
@@ -305,20 +393,36 @@ const styles = StyleSheet.create({
     borderRadius: 36,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 16,
     borderWidth: StyleSheet.hairlineWidth,
   },
-  welcomeTitle: {
-    fontSize: 22,
-    fontFamily: "Inter_700Bold",
-    marginBottom: 8,
-  },
+  welcomeTitle: { fontSize: 22, fontFamily: "Inter_700Bold", marginBottom: 8 },
   welcomeSub: {
     fontSize: 14.5,
     lineHeight: 21,
     textAlign: "center",
     fontFamily: "Inter_400Regular",
   },
+  welcomeActions: { flexDirection: "row", gap: 10, marginTop: 22, flexWrap: "wrap", justifyContent: "center" },
+  welcomeChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  welcomeChipText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  adBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    height: 42,
+    borderRadius: 14,
+    borderWidth: 1.5,
+  },
+  adBtnText: { fontSize: 13.5, fontFamily: "Inter_600SemiBold" },
   inputBar: {
     paddingHorizontal: 12,
     paddingTop: 8,
@@ -328,7 +432,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "flex-end",
     borderRadius: 24,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     paddingLeft: 16,
     paddingRight: 6,
     paddingVertical: 6,
@@ -348,5 +452,8 @@ const styles = StyleSheet.create({
     borderRadius: 17,
     alignItems: "center",
     justifyContent: "center",
+    shadowOpacity: 0.5,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 0 },
   },
 });
