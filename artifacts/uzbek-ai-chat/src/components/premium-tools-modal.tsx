@@ -3,18 +3,29 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, Image as ImageIcon, Mic, Upload, Sparkles, Lock } from "lucide-react";
+import {
+  FileText, Image as ImageIcon, Mic, Upload, Sparkles, Lock, Loader2, AlertCircle,
+} from "lucide-react";
 import { usePremium } from "@/contexts/premium-context";
+import { useImageLimit } from "@/hooks/use-image-limit";
 
 interface Props {
   open: boolean;
   onClose: () => void;
   onUpgradeRequest: () => void;
+  onImageLimitReached: () => void;
+  initialTab?: "pdf" | "image" | "voice";
 }
 
-export function PremiumToolsModal({ open, onClose, onUpgradeRequest }: Props) {
+export function PremiumToolsModal({
+  open,
+  onClose,
+  onUpgradeRequest,
+  onImageLimitReached,
+  initialTab = "image",
+}: Props) {
   const { isPremium } = usePremium();
-  const [tab, setTab] = useState("pdf");
+  const [tab, setTab] = useState<"pdf" | "image" | "voice">(initialTab);
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
@@ -26,19 +37,26 @@ export function PremiumToolsModal({ open, onClose, onUpgradeRequest }: Props) {
           </DialogTitle>
         </DialogHeader>
 
-        <Tabs value={tab} onValueChange={setTab}>
+        <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
           <TabsList className="grid grid-cols-3 w-full">
-            <TabsTrigger value="pdf" data-testid="tab-pdf">
-              <FileText className="w-4 h-4 mr-1.5" />PDF
-            </TabsTrigger>
             <TabsTrigger value="image" data-testid="tab-image">
               <ImageIcon className="w-4 h-4 mr-1.5" />Rasm
+            </TabsTrigger>
+            <TabsTrigger value="pdf" data-testid="tab-pdf">
+              <FileText className="w-4 h-4 mr-1.5" />PDF
             </TabsTrigger>
             <TabsTrigger value="voice" data-testid="tab-voice">
               <Mic className="w-4 h-4 mr-1.5" />Ovoz
             </TabsTrigger>
           </TabsList>
 
+          <TabsContent value="image" className="mt-4">
+            {/* Image generation is available to ALL users (with daily limit for free) */}
+            <ImageTool
+              isPremium={isPremium}
+              onLimitReached={onImageLimitReached}
+            />
+          </TabsContent>
           <TabsContent value="pdf" className="mt-4">
             {isPremium ? (
               <PdfTool />
@@ -46,17 +64,6 @@ export function PremiumToolsModal({ open, onClose, onUpgradeRequest }: Props) {
               <Locked
                 title="PDF Tahlilchi"
                 desc="PDF fayllaringizni yuklang va AI ulardan kerakli ma'lumotni topib, qisqacha taqdim qiladi."
-                onUpgrade={onUpgradeRequest}
-              />
-            )}
-          </TabsContent>
-          <TabsContent value="image" className="mt-4">
-            {isPremium ? (
-              <ImageTool />
-            ) : (
-              <Locked
-                title="AI Rasm Generator"
-                desc="O'zbekcha matn yozing — AI siz uchun rasm yaratadi."
                 onUpgrade={onUpgradeRequest}
               />
             )}
@@ -124,32 +131,114 @@ function PdfTool() {
       <Button className="w-full" disabled={!file}>
         AI bilan tahlil qilish
       </Button>
-      {file && (
-        <p className="text-xs text-muted-foreground text-center">
-          Tahlil natijasi suhbatda paydo bo'ladi.
-        </p>
-      )}
     </div>
   );
 }
 
-function ImageTool() {
+function ImageTool({
+  isPremium,
+  onLimitReached,
+}: {
+  isPremium: boolean;
+  onLimitReached: () => void;
+}) {
   const [prompt, setPrompt] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const { remaining, limitReached, increment, limit, count } = useImageLimit();
+
+  const handleGenerate = async () => {
+    if (!prompt.trim()) return;
+    if (!isPremium && limitReached) {
+      onLimitReached();
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    setImageUrl(null);
+    try {
+      const res = await fetch("/api/openai/images/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: prompt.trim() }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { dataUrl?: string; error?: string };
+      if (!res.ok || !data.dataUrl) {
+        setError(data.error ?? "Rasm yaratib bo'lmadi.");
+        return;
+      }
+      setImageUrl(data.dataUrl);
+      if (!isPremium) increment();
+    } catch {
+      setError("Tarmoq xatosi.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-3">
+      {/* Credits header */}
+      <div className="flex items-center justify-between text-xs">
+        {isPremium ? (
+          <span className="inline-flex items-center gap-1 font-semibold text-secondary">
+            <Sparkles className="w-3 h-3" />
+            HD AI · Cheksiz
+          </span>
+        ) : (
+          <span className="text-muted-foreground">
+            Bugungi rasmlar: <span className="font-semibold text-foreground">{count}/{limit}</span>
+          </span>
+        )}
+        {!isPremium && remaining === 0 && (
+          <span className="inline-flex items-center gap-1 text-secondary font-semibold">
+            <AlertCircle className="w-3 h-3" />
+            Limit tugadi
+          </span>
+        )}
+      </div>
+
       <Input
         value={prompt}
         onChange={(e) => setPrompt(e.target.value)}
         placeholder="Masalan: Samarqanddagi quyosh botishi"
         data-testid="input-image-prompt"
       />
-      <Button className="w-full" disabled={!prompt.trim()}>
-        <ImageIcon className="w-4 h-4 mr-2" />
-        Rasm yaratish
+      <Button
+        className="w-full gap-2"
+        disabled={!prompt.trim() || loading}
+        onClick={handleGenerate}
+      >
+        {loading ? (
+          <>
+            <Loader2 className="w-4 h-4 animate-spin" /> AI yaratmoqda...
+          </>
+        ) : (
+          <>
+            <ImageIcon className="w-4 h-4" /> Rasm yaratish
+          </>
+        )}
       </Button>
-      <div className="aspect-square rounded-xl bg-muted/40 border border-border flex items-center justify-center text-sm text-muted-foreground">
-        Yaratilgan rasm bu yerda paydo bo'ladi
+
+      <div className="aspect-square rounded-xl bg-muted/40 border border-border flex items-center justify-center text-sm text-muted-foreground overflow-hidden relative">
+        {loading ? (
+          <div className="absolute inset-0 bg-gradient-to-r from-muted via-muted/50 to-muted animate-pulse flex items-center justify-center">
+            <span className="text-xs">AI sehri ishga tushdi...</span>
+          </div>
+        ) : imageUrl ? (
+          <img src={imageUrl} alt={prompt} className="w-full h-full object-cover" />
+        ) : (
+          <span className="px-4 text-center">Yaratilgan rasm bu yerda paydo bo'ladi</span>
+        )}
       </div>
+
+      {error && (
+        <p className="text-xs text-destructive flex items-center gap-1">
+          <AlertCircle className="w-3 h-3" /> {error}
+        </p>
+      )}
     </div>
   );
 }
@@ -173,7 +262,7 @@ function VoiceTool() {
         {recording ? "Eshityapman..." : "Gapirishni boshlash uchun bosing"}
       </div>
       <p className="text-xs text-muted-foreground">
-        AI sizning ovoziingizni eshitadi va ovozli javob qaytaradi.
+        AI sizning ovozingizni eshitadi va ovozli javob qaytaradi.
       </p>
     </div>
   );

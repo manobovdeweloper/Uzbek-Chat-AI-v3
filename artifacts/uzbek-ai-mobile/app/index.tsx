@@ -24,7 +24,7 @@ import { MessageBubble } from "@/components/MessageBubble";
 import { ConversationsSheet } from "@/components/ConversationsSheet";
 import { useChatStream, ChatMessage } from "@/hooks/useChatStream";
 import { usePremium } from "@/contexts/PremiumContext";
-import { useMessageLimit } from "@/hooks/useMessageLimit";
+import { useImageLimit } from "@/hooks/useImageLimit";
 import { UpgradeModal } from "@/components/UpgradeModal";
 import { DailyLimitModal } from "@/components/DailyLimitModal";
 import { ToolsSheet } from "@/components/ToolsSheet";
@@ -38,11 +38,11 @@ export default function ChatScreen() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [loadingConv, setLoadingConv] = useState(false);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
-  const [limitModalOpen, setLimitModalOpen] = useState(false);
+  const [imageLimitOpen, setImageLimitOpen] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
 
   const { isPremium } = usePremium();
-  const { remaining, limitReached, increment, grantBonus, resetsAt, limit } = useMessageLimit();
+  const { remaining: imgRemaining, limit: imgLimit, resetsAt: imgResetsAt } = useImageLimit();
 
   const { messages, streaming, isSending, send, reset } = useChatStream(
     conversationId,
@@ -75,21 +75,15 @@ export default function ChatScreen() {
     [reset],
   );
 
+  // TEXT CHAT IS UNLIMITED FOR EVERYONE
   const handleSend = useCallback(async () => {
     const content = input.trim();
     if (!content || isSending) return;
-
-    if (!isPremium && limitReached) {
-      setLimitModalOpen(true);
-      return;
-    }
 
     setInput("");
     if (Platform.OS !== "web") {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
-
-    if (!isPremium) increment();
 
     let id = conversationId;
     if (!id) {
@@ -101,12 +95,7 @@ export default function ChatScreen() {
     }
     await send(content, id);
     qc.invalidateQueries({ queryKey: getListOpenaiConversationsQueryKey() });
-  }, [input, isSending, isPremium, limitReached, increment, conversationId, send, qc]);
-
-  const handleWatchAd = useCallback(() => {
-    grantBonus(5);
-    setLimitModalOpen(false);
-  }, [grantBonus]);
+  }, [input, isSending, conversationId, send, qc]);
 
   const listData = useMemo(() => {
     const arr: ChatMessage[] = [...messages];
@@ -141,14 +130,29 @@ export default function ChatScreen() {
         <View style={styles.titleWrap}>
           <Text style={[styles.title, { color: colors.foreground }]}>O'zbek AI</Text>
           {isPremium ? (
-            <View style={[styles.premiumPill, { backgroundColor: "rgba(0,240,255,0.12)", borderColor: colors.primary }]}>
+            <View
+              style={[
+                styles.premiumPill,
+                { backgroundColor: "rgba(0,240,255,0.12)", borderColor: colors.primary },
+              ]}
+            >
               <Feather name="zap" size={9} color={colors.primary} />
               <Text style={[styles.premiumPillText, { color: colors.primary }]}>PREMIUM</Text>
             </View>
           ) : (
-            <Text style={[styles.usageText, { color: colors.mutedForeground }]}>
-              {remaining}/{limit} qoldi
-            </Text>
+            <Pressable onPress={() => setToolsOpen(true)}>
+              <View
+                style={[
+                  styles.premiumPill,
+                  { backgroundColor: "rgba(255,43,214,0.10)", borderColor: colors.secondary },
+                ]}
+              >
+                <Feather name="image" size={9} color={colors.secondary} />
+                <Text style={[styles.premiumPillText, { color: colors.secondary }]}>
+                  RASM {imgRemaining}/{imgLimit}
+                </Text>
+              </View>
+            </Pressable>
           )}
         </View>
         <Pressable onPress={() => setToolsOpen(true)} hitSlop={10} style={styles.iconBtn}>
@@ -182,28 +186,6 @@ export default function ChatScreen() {
           />
         )}
 
-        {/* Watch Ad button when at limit (free tier) */}
-        {!isPremium && limitReached && (
-          <View style={{ paddingHorizontal: 12, paddingTop: 8 }}>
-            <Pressable
-              onPress={handleWatchAd}
-              style={({ pressed }) => [
-                styles.adBtn,
-                {
-                  borderColor: colors.secondary,
-                  backgroundColor: "rgba(255,43,214,0.08)",
-                  opacity: pressed ? 0.8 : 1,
-                },
-              ]}
-            >
-              <Feather name="play-circle" size={16} color={colors.secondary} />
-              <Text style={[styles.adBtnText, { color: colors.secondary }]}>
-                Reklama ko'rish — +5 xabar
-              </Text>
-            </Pressable>
-          </View>
-        )}
-
         {/* Input */}
         <View
           style={[
@@ -218,25 +200,17 @@ export default function ChatScreen() {
           <View
             style={[
               styles.inputWrap,
-              {
-                backgroundColor: colors.card,
-                borderColor: limitReached && !isPremium ? colors.secondary : colors.border,
-              },
+              { backgroundColor: colors.card, borderColor: colors.border },
             ]}
           >
             <TextInput
               value={input}
               onChangeText={setInput}
-              placeholder={
-                limitReached && !isPremium ? "Kunlik limit tugadi..." : "Xabar yozing..."
-              }
+              placeholder="Xabar yozing..."
               placeholderTextColor={colors.mutedForeground}
               multiline
               style={[styles.input, { color: colors.foreground }]}
               editable={!isSending}
-              onFocus={() => {
-                if (!isPremium && limitReached) setLimitModalOpen(true);
-              }}
             />
             <Pressable
               onPress={handleSend}
@@ -275,15 +249,14 @@ export default function ChatScreen() {
 
       <UpgradeModal visible={upgradeOpen} onClose={() => setUpgradeOpen(false)} />
       <DailyLimitModal
-        visible={limitModalOpen}
-        onClose={() => setLimitModalOpen(false)}
+        visible={imageLimitOpen}
+        onClose={() => setImageLimitOpen(false)}
         onUpgrade={() => {
-          setLimitModalOpen(false);
+          setImageLimitOpen(false);
           setUpgradeOpen(true);
         }}
-        onWatchAd={handleWatchAd}
-        resetsAt={resetsAt}
-        limit={5}
+        resetsAt={imgResetsAt}
+        limit={imgLimit}
       />
       <ToolsSheet
         visible={toolsOpen}
@@ -291,6 +264,10 @@ export default function ChatScreen() {
         onUpgrade={() => {
           setToolsOpen(false);
           setUpgradeOpen(true);
+        }}
+        onImageLimitReached={() => {
+          setToolsOpen(false);
+          setImageLimitOpen(true);
         }}
       />
     </View>
@@ -321,7 +298,8 @@ function Welcome({
       </View>
       <Text style={[styles.welcomeTitle, { color: c.foreground }]}>Xush kelibsiz!</Text>
       <Text style={[styles.welcomeSub, { color: c.mutedForeground }]}>
-        Men sizning shaxsiy sun'iy intellekt yordamchingizman.{"\n"}Qanday yordam bera olaman?
+        Men sizning shaxsiy sun'iy intellekt yordamchingizman.{"\n"}
+        Cheksiz suhbatlashing — tekin va chegarasiz.
       </Text>
 
       <View style={styles.welcomeActions}>
@@ -360,7 +338,6 @@ const styles = StyleSheet.create({
   iconBtn: { padding: 8, minWidth: 38, alignItems: "center" },
   titleWrap: { flex: 1, alignItems: "center" },
   title: { fontSize: 17, fontFamily: "Inter_600SemiBold" },
-  usageText: { fontSize: 10.5, fontFamily: "Inter_500Medium", marginTop: 2 },
   premiumPill: {
     flexDirection: "row",
     alignItems: "center",
@@ -413,16 +390,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   welcomeChipText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
-  adBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    height: 42,
-    borderRadius: 14,
-    borderWidth: 1.5,
-  },
-  adBtnText: { fontSize: 13.5, fontFamily: "Inter_600SemiBold" },
   inputBar: {
     paddingHorizontal: 12,
     paddingTop: 8,

@@ -1,6 +1,8 @@
 import { Feather } from "@expo/vector-icons";
 import React, { useState } from "react";
 import {
+  ActivityIndicator,
+  Image,
   Modal,
   Pressable,
   ScrollView,
@@ -11,23 +13,27 @@ import {
 } from "react-native";
 import { useColors } from "@/hooks/useColors";
 import { usePremium } from "@/contexts/PremiumContext";
+import { useImageLimit } from "@/hooks/useImageLimit";
 
-type Tab = "pdf" | "image" | "voice";
+const BASE_URL = `https://${process.env.EXPO_PUBLIC_DOMAIN}`;
+
+type Tab = "image" | "pdf" | "voice";
 
 interface Props {
   visible: boolean;
   onClose: () => void;
   onUpgrade: () => void;
+  onImageLimitReached: () => void;
 }
 
-export function ToolsSheet({ visible, onClose, onUpgrade }: Props) {
+export function ToolsSheet({ visible, onClose, onUpgrade, onImageLimitReached }: Props) {
   const c = useColors();
   const { isPremium } = usePremium();
-  const [tab, setTab] = useState<Tab>("pdf");
+  const [tab, setTab] = useState<Tab>("image");
 
   const tabs: { key: Tab; icon: keyof typeof Feather.glyphMap; label: string }[] = [
-    { key: "pdf", icon: "file-text", label: "PDF" },
     { key: "image", icon: "image", label: "Rasm" },
+    { key: "pdf", icon: "file-text", label: "PDF" },
     { key: "voice", icon: "mic", label: "Ovoz" },
   ];
 
@@ -40,7 +46,6 @@ export function ToolsSheet({ visible, onClose, onUpgrade }: Props) {
             { backgroundColor: c.background, borderColor: c.border },
           ]}
         >
-          {/* Header */}
           <View style={styles.headerRow}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
               <Feather name="zap" size={18} color={c.primary} />
@@ -53,7 +58,6 @@ export function ToolsSheet({ visible, onClose, onUpgrade }: Props) {
             </Pressable>
           </View>
 
-          {/* Tabs */}
           <View style={[styles.tabs, { backgroundColor: c.card, borderColor: c.border }]}>
             {tabs.map((t) => {
               const active = t.key === tab;
@@ -61,10 +65,7 @@ export function ToolsSheet({ visible, onClose, onUpgrade }: Props) {
                 <Pressable
                   key={t.key}
                   onPress={() => setTab(t.key)}
-                  style={[
-                    styles.tab,
-                    active && { backgroundColor: c.primary },
-                  ]}
+                  style={[styles.tab, active && { backgroundColor: c.primary }]}
                 >
                   <Feather name={t.icon} size={14} color={active ? c.primaryForeground : c.foreground} />
                   <Text
@@ -81,14 +82,14 @@ export function ToolsSheet({ visible, onClose, onUpgrade }: Props) {
           </View>
 
           <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
-            {!isPremium ? (
-              <LockedTool tab={tab} onUpgrade={onUpgrade} />
+            {tab === "image" ? (
+              <ImageTool isPremium={isPremium} onLimitReached={onImageLimitReached} />
             ) : tab === "pdf" ? (
-              <PdfTool />
-            ) : tab === "image" ? (
-              <ImageTool />
-            ) : (
+              isPremium ? <PdfTool /> : <LockedTool kind="pdf" onUpgrade={onUpgrade} />
+            ) : isPremium ? (
               <VoiceTool />
+            ) : (
+              <LockedTool kind="voice" onUpgrade={onUpgrade} />
             )}
           </ScrollView>
         </View>
@@ -97,14 +98,10 @@ export function ToolsSheet({ visible, onClose, onUpgrade }: Props) {
   );
 }
 
-const TOOL_INFO: Record<Tab, { title: string; desc: string }> = {
+const TOOL_INFO: Record<"pdf" | "voice", { title: string; desc: string }> = {
   pdf: {
     title: "PDF Tahlilchi",
     desc: "PDF fayllaringizni yuklang va AI ulardan kerakli ma'lumotni topib, qisqacha taqdim qiladi.",
-  },
-  image: {
-    title: "AI Rasm Generator",
-    desc: "O'zbekcha matn yozing — AI siz uchun rasm yaratadi.",
   },
   voice: {
     title: "Ovozli Suhbat",
@@ -112,9 +109,9 @@ const TOOL_INFO: Record<Tab, { title: string; desc: string }> = {
   },
 };
 
-function LockedTool({ tab, onUpgrade }: { tab: Tab; onUpgrade: () => void }) {
+function LockedTool({ kind, onUpgrade }: { kind: "pdf" | "voice"; onUpgrade: () => void }) {
   const c = useColors();
-  const info = TOOL_INFO[tab];
+  const info = TOOL_INFO[kind];
   return (
     <View style={[styles.lockedBox, { backgroundColor: c.card, borderColor: c.border }]}>
       <View
@@ -164,11 +161,76 @@ function PdfTool() {
   );
 }
 
-function ImageTool() {
+function ImageTool({
+  isPremium,
+  onLimitReached,
+}: {
+  isPremium: boolean;
+  onLimitReached: () => void;
+}) {
   const c = useColors();
   const [prompt, setPrompt] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const { remaining, limit, count, limitReached, increment } = useImageLimit();
+
+  const handleGenerate = async () => {
+    if (!prompt.trim() || loading) return;
+    if (!isPremium && limitReached) {
+      onLimitReached();
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    setImageUrl(null);
+    try {
+      const res = await fetch(`${BASE_URL}/api/openai/images/generate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: prompt.trim() }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        dataUrl?: string;
+        error?: string;
+      };
+      if (!res.ok || !data.dataUrl) {
+        setError(data.error ?? "Rasm yaratib bo'lmadi.");
+        return;
+      }
+      setImageUrl(data.dataUrl);
+      if (!isPremium) increment();
+    } catch {
+      setError("Tarmoq xatosi.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <View style={{ gap: 12 }}>
+      <View style={styles.creditsRow}>
+        {isPremium ? (
+          <View style={[styles.creditPill, { backgroundColor: "rgba(0,240,255,0.10)", borderColor: c.primary }]}>
+            <Feather name="zap" size={11} color={c.primary} />
+            <Text style={[styles.creditPillText, { color: c.primary }]}>HD AI · CHEKSIZ</Text>
+          </View>
+        ) : (
+          <Text style={[styles.creditText, { color: c.mutedForeground }]}>
+            Bugungi rasmlar:{" "}
+            <Text style={{ color: c.foreground, fontFamily: "Inter_700Bold" }}>
+              {count}/{limit}
+            </Text>
+          </Text>
+        )}
+        {!isPremium && limitReached && (
+          <View style={[styles.creditPill, { backgroundColor: "rgba(255,43,214,0.12)", borderColor: c.secondary }]}>
+            <Feather name="alert-circle" size={10} color={c.secondary} />
+            <Text style={[styles.creditPillText, { color: c.secondary }]}>LIMIT TUGADI</Text>
+          </View>
+        )}
+      </View>
+
       <TextInput
         value={prompt}
         onChangeText={setPrompt}
@@ -180,30 +242,50 @@ function ImageTool() {
         ]}
       />
       <Pressable
+        onPress={handleGenerate}
+        disabled={!prompt.trim() || loading}
         style={[
           styles.actionBtn,
-          { backgroundColor: prompt.trim() ? c.primary : c.muted },
+          { backgroundColor: prompt.trim() && !loading ? c.primary : c.muted },
         ]}
       >
-        <Feather
-          name="image"
-          size={16}
-          color={prompt.trim() ? c.primaryForeground : c.mutedForeground}
-        />
-        <Text
-          style={[
-            styles.actionText,
-            { color: prompt.trim() ? c.primaryForeground : c.mutedForeground },
-          ]}
-        >
-          Rasm yaratish
-        </Text>
+        {loading ? (
+          <>
+            <ActivityIndicator size="small" color={c.primaryForeground} />
+            <Text style={[styles.actionText, { color: c.primaryForeground }]}>AI yaratmoqda...</Text>
+          </>
+        ) : (
+          <>
+            <Feather
+              name="image"
+              size={16}
+              color={prompt.trim() ? c.primaryForeground : c.mutedForeground}
+            />
+            <Text
+              style={[
+                styles.actionText,
+                { color: prompt.trim() ? c.primaryForeground : c.mutedForeground },
+              ]}
+            >
+              Rasm yaratish
+            </Text>
+          </>
+        )}
       </Pressable>
       <View style={[styles.previewBox, { backgroundColor: c.card, borderColor: c.border }]}>
-        <Text style={[styles.previewText, { color: c.mutedForeground }]}>
-          Yaratilgan rasm bu yerda paydo bo'ladi
-        </Text>
+        {imageUrl ? (
+          <Image source={{ uri: imageUrl }} style={styles.previewImg} resizeMode="cover" />
+        ) : (
+          <Text style={[styles.previewText, { color: c.mutedForeground }]}>
+            {loading ? "AI sehri ishga tushdi..." : "Yaratilgan rasm bu yerda paydo bo'ladi"}
+          </Text>
+        )}
       </View>
+      {error && (
+        <Text style={[styles.errorTxt, { color: c.destructive }]}>
+          {error}
+        </Text>
+      )}
     </View>
   );
 }
@@ -328,8 +410,29 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
+    overflow: "hidden",
   },
+  previewImg: { width: "100%", height: "100%" },
   previewText: { fontSize: 13, fontFamily: "Inter_400Regular" },
+
+  creditsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    minHeight: 22,
+  },
+  creditText: { fontSize: 12, fontFamily: "Inter_500Medium" },
+  creditPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  creditPillText: { fontSize: 9.5, fontFamily: "Inter_700Bold", letterSpacing: 0.8 },
+  errorTxt: { fontSize: 12, fontFamily: "Inter_500Medium" },
 
   micBtn: {
     width: 110,

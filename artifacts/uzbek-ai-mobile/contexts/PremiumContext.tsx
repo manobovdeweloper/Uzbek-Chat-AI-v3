@@ -8,12 +8,13 @@ import React, {
 } from "react";
 
 const STORAGE_KEY = "uzbek-ai:isPremium";
-const ACTIVATION_CODE = "MANOPOV2026";
+const BASE_URL = `https://${process.env.EXPO_PUBLIC_DOMAIN}`;
 
 interface PremiumContextValue {
   isPremium: boolean;
   isLoaded: boolean;
-  activate: (code: string) => Promise<boolean>;
+  /** Returns null on success, error message string on failure. */
+  activate: (code: string) => Promise<string | null>;
   deactivate: () => Promise<void>;
 }
 
@@ -29,13 +30,30 @@ export function PremiumProvider({ children }: { children: React.ReactNode }) {
       .finally(() => setIsLoaded(true));
   }, []);
 
-  const activate = useCallback(async (code: string) => {
-    if (code.trim().toUpperCase() === ACTIVATION_CODE) {
-      await AsyncStorage.setItem(STORAGE_KEY, "1");
-      setIsPremium(true);
-      return true;
+  const activate = useCallback(async (code: string): Promise<string | null> => {
+    const trimmed = code.trim();
+    if (!/^\d{6}$/.test(trimmed)) {
+      return "Kod 6 ta raqamdan iborat bo'lishi kerak.";
     }
-    return false;
+    try {
+      const res = await fetch(`${BASE_URL}/api/premium/activate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: trimmed }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        ok?: boolean;
+        error?: string;
+      };
+      if (res.ok && data.ok) {
+        await AsyncStorage.setItem(STORAGE_KEY, "1");
+        setIsPremium(true);
+        return null;
+      }
+      return data.error ?? "Kod noto'g'ri yoki allaqachon ishlatilgan.";
+    } catch {
+      return "Server bilan bog'lanib bo'lmadi.";
+    }
   }, []);
 
   const deactivate = useCallback(async () => {

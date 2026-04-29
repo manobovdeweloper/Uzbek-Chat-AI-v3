@@ -2,7 +2,7 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import { conversations, messages } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
-import { openai } from "@workspace/integrations-openai-ai-server";
+import { openai, generateImageBuffer } from "@workspace/integrations-openai-ai-server";
 import { CreateOpenaiConversationBody, SendOpenaiMessageBody, GetOpenaiConversationParams, DeleteOpenaiConversationParams, ListOpenaiMessagesParams, SendOpenaiMessageParams } from "@workspace/api-zod";
 
 const router = Router();
@@ -178,6 +178,27 @@ This user is on the PREMIUM tier — give thorough, in-depth answers without wor
     req.log.error({ err }, "Error streaming OpenAI response");
     res.write(`data: ${JSON.stringify({ error: "Xato yuz berdi" })}\n\n`);
     res.end();
+  }
+});
+
+/**
+ * POST /api/openai/images/generate
+ * body: { prompt: string }
+ * Returns: { dataUrl: string }
+ */
+router.post("/images/generate", async (req, res) => {
+  const prompt = String((req.body as { prompt?: string })?.prompt ?? "").trim();
+  if (!prompt) {
+    res.status(400).json({ error: "Prompt kerak" });
+    return;
+  }
+  try {
+    const buffer = await generateImageBuffer(prompt, "1024x1024");
+    const dataUrl = `data:image/png;base64,${buffer.toString("base64")}`;
+    res.json({ dataUrl });
+  } catch (err) {
+    req.log.error({ err }, "Image generation failed");
+    res.status(500).json({ error: "Rasm yaratib bo'lmadi. Qayta urinib ko'ring." });
   }
 });
 

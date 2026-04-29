@@ -13,7 +13,7 @@ import { ChatSidebar } from "@/components/chat-sidebar";
 import { ChatArea } from "@/components/chat-area";
 import { useChatStream } from "@/hooks/use-chat-stream";
 import { usePremium } from "@/contexts/premium-context";
-import { useMessageLimit } from "@/hooks/use-message-limit";
+import { useImageLimit } from "@/hooks/use-image-limit";
 import { UpgradeModal } from "@/components/upgrade-modal";
 import { DailyLimitModal } from "@/components/daily-limit-modal";
 import { PremiumToolsModal } from "@/components/premium-tools-modal";
@@ -22,12 +22,12 @@ export default function Home() {
   const [activeConversationId, setActiveConversationId] = useState<number | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
-  const [limitOpen, setLimitOpen] = useState(false);
+  const [imageLimitOpen, setImageLimitOpen] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
   const queryClient = useQueryClient();
 
   const { isPremium } = usePremium();
-  const { limitReached, increment, resetsAt, limit, remaining } = useMessageLimit();
+  const { remaining: imgRemaining, limit: imgLimit, resetsAt: imgResetsAt } = useImageLimit();
 
   const { data: conversations = [], isLoading: isLoadingConversations } = useListOpenaiConversations();
   const createConversation = useCreateOpenaiConversation();
@@ -63,13 +63,9 @@ export default function Home() {
     setIsSidebarOpen(false);
   }, []);
 
+  // Text chat is now UNLIMITED for everyone — no gating here.
   const handleSendMessage = useCallback(
     async (content: string) => {
-      if (!isPremium && limitReached) {
-        setLimitOpen(true);
-        return;
-      }
-
       let currentId = activeConversationId;
       if (!currentId) {
         try {
@@ -83,8 +79,6 @@ export default function Home() {
           return;
         }
       }
-
-      if (!isPremium) increment();
 
       if (currentId) {
         if (!activeConversationId) {
@@ -100,7 +94,7 @@ export default function Home() {
         }
       }
     },
-    [activeConversationId, createConversation, queryClient, sendMessage, isPremium, limitReached, increment]
+    [activeConversationId, createConversation, queryClient, sendMessage, isPremium]
   );
 
   return (
@@ -128,8 +122,8 @@ export default function Home() {
           onNewChat={handleNewChat}
           isLoading={isLoadingConversations}
           isPremium={isPremium}
-          remaining={remaining}
-          limit={limit}
+          imageRemaining={imgRemaining}
+          imageLimit={imgLimit}
           onUpgrade={() => setUpgradeOpen(true)}
           onOpenTools={() => setToolsOpen(true)}
         />
@@ -147,14 +141,14 @@ export default function Home() {
 
       <UpgradeModal open={upgradeOpen} onClose={() => setUpgradeOpen(false)} />
       <DailyLimitModal
-        open={limitOpen}
-        onClose={() => setLimitOpen(false)}
+        open={imageLimitOpen}
+        onClose={() => setImageLimitOpen(false)}
         onUpgrade={() => {
-          setLimitOpen(false);
+          setImageLimitOpen(false);
           setUpgradeOpen(true);
         }}
-        resetsAt={resetsAt}
-        limit={limit}
+        resetsAt={imgResetsAt}
+        limit={imgLimit}
       />
       <PremiumToolsModal
         open={toolsOpen}
@@ -162,6 +156,10 @@ export default function Home() {
         onUpgradeRequest={() => {
           setToolsOpen(false);
           setUpgradeOpen(true);
+        }}
+        onImageLimitReached={() => {
+          setToolsOpen(false);
+          setImageLimitOpen(true);
         }}
       />
     </div>

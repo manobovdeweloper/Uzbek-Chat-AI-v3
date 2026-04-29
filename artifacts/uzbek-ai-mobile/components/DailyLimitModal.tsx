@@ -14,7 +14,6 @@ interface Props {
   visible: boolean;
   onClose: () => void;
   onUpgrade: () => void;
-  onWatchAd: () => void;
   resetsAt: number;
   limit: number;
 }
@@ -23,7 +22,6 @@ export function DailyLimitModal({
   visible,
   onClose,
   onUpgrade,
-  onWatchAd,
   resetsAt,
   limit,
 }: Props) {
@@ -36,7 +34,7 @@ export function DailyLimitModal({
         <View
           style={[
             styles.box,
-            { backgroundColor: c.background, borderColor: c.primary },
+            { backgroundColor: c.background, borderColor: c.secondary },
           ]}
         >
           <View
@@ -45,18 +43,19 @@ export function DailyLimitModal({
               { backgroundColor: "rgba(255,43,214,0.15)", borderColor: c.secondary },
             ]}
           >
-            <Feather name="clock" size={28} color={c.secondary} />
+            <Feather name="image" size={28} color={c.secondary} />
           </View>
           <Text style={[styles.title, { color: c.foreground }]}>
-            Kunlik limitga yetdingiz
+            Kunlik rasm limiti tugadi
           </Text>
           <Text style={[styles.sub, { color: c.mutedForeground }]}>
-            Bepul tarif kuniga {limit} ta xabar bilan cheklangan.
+            Bepul tarif kuniga {limit} ta rasm bilan cheklangan.{"\n"}
+            Premium — cheksiz HD rasmlar.
           </Text>
 
           <View style={[styles.countdown, { backgroundColor: c.card, borderColor: c.border }]}>
             <Text style={[styles.countdownLabel, { color: c.mutedForeground }]}>
-              Yangi xabarlar shu vaqtdan keyin:
+              Yangi rasmlar shu vaqtdan keyin:
             </Text>
             <Text style={[styles.countdownValue, { color: c.foreground }]}>
               {formatCountdown(remainingMs)}
@@ -73,23 +72,6 @@ export function DailyLimitModal({
             <Feather name="zap" size={16} color={c.primaryForeground} />
             <Text style={[styles.primaryText, { color: c.primaryForeground }]}>
               Premiumga o'tish — $2/oy
-            </Text>
-          </Pressable>
-
-          <Pressable
-            onPress={onWatchAd}
-            style={({ pressed }) => [
-              styles.secondaryBtn,
-              {
-                backgroundColor: "transparent",
-                borderColor: c.secondary,
-                opacity: pressed ? 0.7 : 1,
-              },
-            ]}
-          >
-            <Feather name="play-circle" size={16} color={c.secondary} />
-            <Text style={[styles.secondaryText, { color: c.secondary }]}>
-              Reklama ko'ring +5 xabar
             </Text>
           </Pressable>
 
@@ -150,16 +132,5 @@ const styles = StyleSheet.create({
     borderRadius: 14,
   },
   primaryText: { fontSize: 14, fontFamily: "Inter_700Bold" },
-  secondaryBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    width: "100%",
-    height: 44,
-    borderRadius: 14,
-    borderWidth: 1.5,
-  },
-  secondaryText: { fontSize: 13.5, fontFamily: "Inter_600SemiBold" },
   dismissText: { fontSize: 13, fontFamily: "Inter_500Medium", marginTop: 4 },
 });

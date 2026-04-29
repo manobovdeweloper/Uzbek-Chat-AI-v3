@@ -3,6 +3,7 @@ import * as Clipboard from "expo-clipboard";
 import * as Linking from "expo-linking";
 import React, { useState } from "react";
 import {
+  ActivityIndicator,
   Modal,
   Pressable,
   ScrollView,
@@ -30,6 +31,7 @@ export function UpgradeModal({ visible, onClose }: Props) {
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const copy = async () => {
     await Clipboard.setStringAsync(CARD_NUMBER.replace(/\s/g, ""));
@@ -39,8 +41,10 @@ export function UpgradeModal({ visible, onClose }: Props) {
 
   const handleActivate = async () => {
     setError(null);
-    const ok = await activate(code);
-    if (ok) {
+    setSubmitting(true);
+    const err = await activate(code);
+    setSubmitting(false);
+    if (!err) {
       setSuccess(true);
       setCode("");
       setTimeout(() => {
@@ -48,7 +52,7 @@ export function UpgradeModal({ visible, onClose }: Props) {
         onClose();
       }, 1400);
     } else {
-      setError("Faollashtirish kodi noto'g'ri.");
+      setError(err);
     }
   };
 
@@ -57,7 +61,6 @@ export function UpgradeModal({ visible, onClose }: Props) {
       <View style={styles.backdrop}>
         <View style={[styles.sheet, { backgroundColor: c.background, borderColor: c.border }]}>
           <ScrollView contentContainerStyle={{ paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
-            {/* Glowing header */}
             <View style={[styles.header, { backgroundColor: c.card, borderColor: c.primary }]}>
               <View style={styles.headerTopRow}>
                 <View style={[styles.crownPill, { backgroundColor: "rgba(0,240,255,0.12)", borderColor: c.primary }]}>
@@ -77,7 +80,7 @@ export function UpgradeModal({ visible, onClose }: Props) {
 
               <View style={styles.featureGrid}>
                 {[
-                  { icon: "infinity" as const, label: "Cheksiz xabarlar" },
+                  { icon: "infinity" as const, label: "Cheksiz HD rasmlar" },
                   { icon: "zap" as const, label: "Tezroq javoblar" },
                   { icon: "file-text" as const, label: "PDF tahlili" },
                   { icon: "image" as const, label: "Rasm yaratish" },
@@ -105,7 +108,13 @@ export function UpgradeModal({ visible, onClose }: Props) {
             ) : (
               <View style={styles.body}>
                 {/* Step 1: Card */}
-                <Text style={[styles.stepLabel, { color: c.foreground }]}>1. To'lov qiling — $2 (~25 000 so'm)</Text>
+                <View style={styles.stepRow}>
+                  <Text style={[styles.stepLabel, { color: c.foreground }]}>1. To'lov qiling — $2 (~25 000 so'm)</Text>
+                  <View style={[styles.verifiedBadge, { backgroundColor: "rgba(16,185,129,0.12)", borderColor: "rgba(16,185,129,0.5)" }]}>
+                    <Feather name="shield" size={10} color="rgb(16,185,129)" />
+                    <Text style={styles.verifiedText}>Tasdiqlangan</Text>
+                  </View>
+                </View>
                 <View style={[styles.card, { backgroundColor: c.card, borderColor: c.border }]}>
                   <Text style={[styles.cardLabel, { color: c.mutedForeground }]}>Karta raqami</Text>
                   <View style={styles.cardRow}>
@@ -136,18 +145,21 @@ export function UpgradeModal({ visible, onClose }: Props) {
                   <Feather name="arrow-up-right" size={16} color={c.primary} />
                 </Pressable>
 
-                {/* Step 3: Code */}
-                <Text style={[styles.stepLabel, { color: c.foreground }]}>3. Admin yuborgan kodni kiriting</Text>
+                {/* Step 3: 6-digit Code */}
+                <Text style={[styles.stepLabel, { color: c.foreground }]}>
+                  3. 6 raqamli aktivatsiya kodini kiriting
+                </Text>
                 <View style={styles.codeRow}>
                   <TextInput
                     value={code}
                     onChangeText={(v) => {
-                      setCode(v);
+                      setCode(v.replace(/\D/g, "").slice(0, 6));
                       setError(null);
                     }}
-                    placeholder="MANOPOV..."
+                    placeholder="000000"
                     placeholderTextColor={c.mutedForeground}
-                    autoCapitalize="characters"
+                    keyboardType="number-pad"
+                    maxLength={6}
                     style={[
                       styles.codeInput,
                       { backgroundColor: c.card, borderColor: c.border, color: c.foreground },
@@ -155,22 +167,26 @@ export function UpgradeModal({ visible, onClose }: Props) {
                   />
                   <Pressable
                     onPress={handleActivate}
-                    disabled={!code.trim()}
+                    disabled={code.length !== 6 || submitting}
                     style={[
                       styles.activateBtn,
                       {
-                        backgroundColor: code.trim() ? c.primary : c.muted,
+                        backgroundColor: code.length === 6 && !submitting ? c.primary : c.muted,
                       },
                     ]}
                   >
-                    <Text
-                      style={[
-                        styles.activateText,
-                        { color: code.trim() ? c.primaryForeground : c.mutedForeground },
-                      ]}
-                    >
-                      Faollashtirish
-                    </Text>
+                    {submitting ? (
+                      <ActivityIndicator size="small" color={c.primaryForeground} />
+                    ) : (
+                      <Text
+                        style={[
+                          styles.activateText,
+                          { color: code.length === 6 ? c.primaryForeground : c.mutedForeground },
+                        ]}
+                      >
+                        Tasdiqlash
+                      </Text>
+                    )}
                   </Pressable>
                 </View>
                 {error && <Text style={[styles.errorText, { color: c.destructive }]}>{error}</Text>}
@@ -195,12 +211,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     paddingTop: 8,
   },
-  header: {
-    margin: 16,
-    padding: 18,
-    borderRadius: 22,
-    borderWidth: 1,
-  },
+  header: { margin: 16, padding: 18, borderRadius: 22, borderWidth: 1 },
   headerTopRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -219,17 +230,34 @@ const styles = StyleSheet.create({
   crownPillText: { fontSize: 10, fontFamily: "Inter_700Bold", letterSpacing: 1 },
   headerTitle: { fontSize: 22, fontFamily: "Inter_700Bold", marginBottom: 6 },
   headerSub: { fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 19 },
-  featureGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    marginTop: 16,
-    gap: 10,
-  },
+  featureGrid: { flexDirection: "row", flexWrap: "wrap", marginTop: 16, gap: 10 },
   featureItem: { flexDirection: "row", alignItems: "center", gap: 6, width: "47%" },
   featureText: { fontSize: 13, fontFamily: "Inter_500Medium" },
 
   body: { paddingHorizontal: 16, gap: 10 },
+  stepRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 14,
+    marginBottom: 6,
+  },
   stepLabel: { fontSize: 13, fontFamily: "Inter_600SemiBold", marginTop: 14, marginBottom: 6 },
+  verifiedBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  verifiedText: {
+    fontSize: 9,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 0.8,
+    color: "rgb(16,185,129)",
+  },
   card: { padding: 14, borderRadius: 14, borderWidth: 1 },
   cardLabel: { fontSize: 11, fontFamily: "Inter_500Medium", marginBottom: 6 },
   cardRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
@@ -251,15 +279,16 @@ const styles = StyleSheet.create({
   codeRow: { flexDirection: "row", gap: 8 },
   codeInput: {
     flex: 1,
-    height: 44,
+    height: 48,
     borderRadius: 12,
     borderWidth: 1,
     paddingHorizontal: 14,
-    fontSize: 14,
-    fontFamily: "Inter_600SemiBold",
-    letterSpacing: 1.5,
+    fontSize: 20,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 8,
+    textAlign: "center",
   },
-  activateBtn: { paddingHorizontal: 16, justifyContent: "center", borderRadius: 12 },
+  activateBtn: { paddingHorizontal: 18, justifyContent: "center", borderRadius: 12, minWidth: 110, alignItems: "center" },
   activateText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
 
   errorText: { fontSize: 12, fontFamily: "Inter_500Medium", marginTop: 6 },

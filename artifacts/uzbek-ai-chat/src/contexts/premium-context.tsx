@@ -1,11 +1,11 @@
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from "react";
 
 const STORAGE_KEY = "uzbek-ai:isPremium";
-const ACTIVATION_CODE = "MANOPOV2026";
 
 interface PremiumContextValue {
   isPremium: boolean;
-  activate: (code: string) => boolean;
+  /** Calls the server, returns null on success or an error message string on failure. */
+  activate: (code: string) => Promise<string | null>;
   deactivate: () => void;
 }
 
@@ -20,15 +20,29 @@ export function PremiumProvider({ children }: { children: ReactNode }) {
     } catch {}
   }, []);
 
-  const activate = useCallback((code: string) => {
-    if (code.trim().toUpperCase() === ACTIVATION_CODE) {
-      try {
-        localStorage.setItem(STORAGE_KEY, "1");
-      } catch {}
-      setIsPremium(true);
-      return true;
+  const activate = useCallback(async (code: string): Promise<string | null> => {
+    const trimmed = code.trim();
+    if (!/^\d{6}$/.test(trimmed)) {
+      return "Kod 6 ta raqamdan iborat bo'lishi kerak.";
     }
-    return false;
+    try {
+      const res = await fetch("/api/premium/activate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: trimmed }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+      if (res.ok && data.ok) {
+        try {
+          localStorage.setItem(STORAGE_KEY, "1");
+        } catch {}
+        setIsPremium(true);
+        return null;
+      }
+      return data.error ?? "Kod noto'g'ri yoki allaqachon ishlatilgan.";
+    } catch {
+      return "Server bilan bog'lanib bo'lmadi.";
+    }
   }, []);
 
   const deactivate = useCallback(() => {

@@ -22,12 +22,30 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - React + Vite frontend at `/` (port auto-assigned)
 - Uzbek-language AI chatbot using GPT-5.2 via Replit AI Integrations
 - Features: real-time SSE streaming, conversation history, sidebar navigation
+- Two tiers: free (unlimited text + 3 images/day) and premium ($2/mo, unlimited HD images + PDF + Voice)
+
+### O'zbek AI Mobile (`artifacts/uzbek-ai-mobile`)
+- Expo React Native app at `/mobile`
+- Cyberpunk neon dark theme, mirrors web tier system
 
 ### API Server (`artifacts/api-server`)
 - Express 5 backend at `/api`
-- Routes: `/api/openai/conversations` (CRUD + SSE streaming chat)
-- AI integration: `@workspace/integrations-openai-ai-server`
-- DB: PostgreSQL `conversations` and `messages` tables via Drizzle ORM
+- Routes:
+  - `/api/openai/conversations` — CRUD + SSE streaming chat (`POST .../messages`)
+  - `/api/openai/images/generate` — image generation via `gpt-image-1` (returns `dataUrl`)
+  - `/api/premium/activate` — POST `{code}` validates 6-digit single-use code, deletes on success
+  - `/api/premium/admin/codes` — admin GET/POST gated by `ADMIN_SECRET` env header `x-admin-secret`
+- DB: PostgreSQL `conversations`, `messages`, `premium_codes` (drizzle)
+- On startup, if `premium_codes` table is empty, seeds 20 random 6-digit codes and logs them once
+
+## Premium System
+- 6-digit numeric activation codes stored in `premium_codes` table
+- Single-use: row is deleted via `DELETE ... RETURNING` on successful activation
+- Frontend persists `isPremium=1` in localStorage / AsyncStorage after server returns ok
+- Free tier: unlimited text chat, 3 image generations / 24h (counter in localStorage / AsyncStorage)
+- Premium tier: unlimited HD images, PDF analyzer, voice chat
+- Payment flow: user pays card `5614 6818 5899 7095` → DM Telegram `@manobov_deweloper` with screenshot → admin sends a 6-digit code from the seeded pool
+- Initial seeded codes are visible in the API server's startup log (search for `PREMIUM ACTIVATION CODES`)
 
 ## Key Commands
 
