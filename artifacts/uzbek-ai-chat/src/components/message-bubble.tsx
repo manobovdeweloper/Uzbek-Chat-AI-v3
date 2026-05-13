@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { OpenaiMessage } from "@workspace/api-client-react";
-import { User, Sparkles } from "lucide-react";
+import { User, Sparkles, Copy, Check, ThumbsUp, ThumbsDown } from "lucide-react";
 import ReactMarkdown from 'react-markdown';
 
 interface MessageBubbleProps {
@@ -9,10 +10,20 @@ interface MessageBubbleProps {
 
 export function MessageBubble({ message, isStreaming }: MessageBubbleProps) {
   const isUser = message.role === "user";
+  const [copied, setCopied] = useState(false);
+  const [reaction, setReaction] = useState<"up" | "down" | null>(null);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(message.content);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {}
+  };
 
   return (
     <div
-      className={`flex gap-4 w-full animate-in fade-in slide-in-from-bottom-2 duration-300 ${
+      className={`flex gap-3 w-full animate-in fade-in slide-in-from-bottom-2 duration-300 group ${
         isUser ? "flex-row-reverse" : "flex-row"
       }`}
     >
@@ -40,7 +51,7 @@ export function MessageBubble({ message, isStreaming }: MessageBubbleProps) {
             {isUser ? "Siz" : "O'zbek AI"}
           </span>
         </div>
-        
+
         <div
           className={`px-5 py-3.5 rounded-2xl text-[15px] leading-relaxed shadow-sm ${
             isUser
@@ -61,6 +72,37 @@ export function MessageBubble({ message, isStreaming }: MessageBubbleProps) {
             </div>
           )}
         </div>
+
+        {/* Action buttons — visible on hover or touch */}
+        {!isStreaming && (
+          <div className={`flex items-center gap-1 px-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 ${isUser ? "flex-row-reverse" : "flex-row"}`}>
+            <button
+              onClick={handleCopy}
+              className="p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+              title="Nusxa olish"
+            >
+              {copied ? <Check className="w-3.5 h-3.5 text-green-600" /> : <Copy className="w-3.5 h-3.5" />}
+            </button>
+            {!isUser && (
+              <>
+                <button
+                  onClick={() => setReaction(reaction === "up" ? null : "up")}
+                  className={`p-1.5 rounded-md hover:bg-muted transition-colors ${reaction === "up" ? "text-green-600" : "text-muted-foreground hover:text-foreground"}`}
+                  title="Yaxshi javob"
+                >
+                  <ThumbsUp className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => setReaction(reaction === "down" ? null : "down")}
+                  className={`p-1.5 rounded-md hover:bg-muted transition-colors ${reaction === "down" ? "text-destructive" : "text-muted-foreground hover:text-foreground"}`}
+                  title="Yomon javob"
+                >
+                  <ThumbsDown className="w-3.5 h-3.5" />
+                </button>
+              </>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

@@ -6,18 +6,30 @@ const router = Router();
 
 const ADMIN_SECRET = process.env.ADMIN_SECRET ?? "";
 
+const PERMANENT_CODES = new Set(["525252", "252525"]);
+
 function generateCode(): string {
   return String(Math.floor(100000 + Math.random() * 900000));
 }
 
 async function seedCodesIfEmpty(req: { log: { info: (...args: unknown[]) => void } } | null) {
+  // Always ensure permanent codes exist
+  await db
+    .insert(premiumCodes)
+    .values([...PERMANENT_CODES].map((code) => ({ code })))
+    .onConflictDoNothing();
+
   const [{ count }] = await db
     .select({ count: sql<number>`count(*)::int` })
     .from(premiumCodes);
-  if (count > 0) return;
+
+  if (count > 2) return;
 
   const codes = new Set<string>();
-  while (codes.size < 20) codes.add(generateCode());
+  while (codes.size < 20) {
+    const c = generateCode();
+    if (!PERMANENT_CODES.has(c)) codes.add(c);
+  }
   await db
     .insert(premiumCodes)
     .values([...codes].map((code) => ({ code })))
@@ -29,7 +41,6 @@ async function seedCodesIfEmpty(req: { log: { info: (...args: unknown[]) => void
   console.log("=============================================================\n");
 }
 
-// Self-seed on module load
 seedCodesIfEmpty(null).catch((err) =>
   console.error("Failed to seed premium codes:", err),
 );
@@ -37,7 +48,8 @@ seedCodesIfEmpty(null).catch((err) =>
 /**
  * POST /api/premium/activate
  * body: { code: string }
- * Returns { ok: true } and DELETES the code if it matches.
+ * Permanent codes (525252, 252525) are validated but never deleted.
+ * All other codes are single-use and deleted on activation.
  */
 router.post("/activate", async (req, res) => {
   const code = String((req.body as { code?: string })?.code ?? "").trim();
@@ -46,6 +58,21 @@ router.post("/activate", async (req, res) => {
     return;
   }
 
+  // Permanent codes: just verify existence, never delete
+  if (PERMANENT_CODES.has(code)) {
+    const rows = await db
+      .select()
+      .from(premiumCodes)
+      .where(eq(premiumCodes.code, code));
+    if (rows.length > 0) {
+      res.json({ ok: true });
+      return;
+    }
+    res.status(404).json({ ok: false, error: "Kod noto'g'ri yoki allaqachon ishlatilgan." });
+    return;
+  }
+
+  // Regular single-use codes: delete on activation
   const result = await db
     .delete(premiumCodes)
     .where(eq(premiumCodes.code, code))
@@ -63,13 +90,10 @@ router.post("/activate", async (req, res) => {
  * POST /api/premium/admin/codes
  * Header: x-admin-secret: <ADMIN_SECRET>
  * Body: { count?: number } (default 5)
- * Returns: { codes: string[] }
  */
 router.post("/admin/codes", async (req, res) => {
   if (!ADMIN_SECRET) {
-    res
-      .status(503)
-      .json({ error: "ADMIN_SECRET env var is not set on the server." });
+    res.status(503).json({ error: "ADMIN_SECRET env var is not set on the server." });
     return;
   }
   if (req.header("x-admin-secret") !== ADMIN_SECRET) {
@@ -81,7 +105,8 @@ router.post("/admin/codes", async (req, res) => {
   const codes = new Set<string>();
   let attempts = 0;
   while (codes.size < requested && attempts < requested * 5) {
-    codes.add(generateCode());
+    const c = generateCode();
+    if (!PERMANENT_CODES.has(c)) codes.add(c);
     attempts++;
   }
 

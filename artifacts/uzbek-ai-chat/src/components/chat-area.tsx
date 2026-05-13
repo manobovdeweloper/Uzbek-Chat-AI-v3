@@ -1,4 +1,4 @@
-import { SendHorizontal, Loader2, Menu, X } from "lucide-react";
+import { SendHorizontal, Loader2, Menu, X, RefreshCw, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { OpenaiMessage } from "@workspace/api-client-react";
@@ -14,6 +14,15 @@ interface ChatAreaProps {
   onToggleSidebar: () => void;
   isSidebarOpen: boolean;
 }
+
+const QUICK_PROMPTS = [
+  { icon: "✍️", label: "Matn yozing", prompt: "Menga qisqa motivatsion xat yozib bering." },
+  { icon: "🧠", label: "Tushuntiring", prompt: "Sun'iy intellekt nima va u qanday ishlaydi? Oddiy tilda tushuntiring." },
+  { icon: "💡", label: "G'oya bering", prompt: "Biznes g'oyalari kerak — O'zbekiston uchun 5 ta innovatsion g'oya." },
+  { icon: "🌍", label: "Tarjima qiling", prompt: "Bu jumlani ingliz tiliga tarjima qiling: 'Bilim — kuch.'",  },
+  { icon: "📝", label: "Rezyume", prompt: "Dasturchi uchun professional rezyume namunasi yozing." },
+  { icon: "🎯", label: "Maslahat", prompt: "Ingliz tilini tez o'rganish uchun eng yaxshi maslahatlar qanday?" },
+];
 
 export function ChatArea({
   messages,
@@ -37,9 +46,10 @@ export function ChatArea({
     }
   }, [messages, streamingMessage]);
 
-  const handleSend = () => {
-    if (!input.trim() || isStreaming) return;
-    onSendMessage(input.trim());
+  const handleSend = (text?: string) => {
+    const content = (text ?? input).trim();
+    if (!content || isStreaming) return;
+    onSendMessage(content);
     setInput("");
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
@@ -57,6 +67,14 @@ export function ChatArea({
     setInput(e.target.value);
     e.target.style.height = "auto";
     e.target.style.height = `${Math.min(e.target.scrollHeight, 200)}px`;
+  };
+
+  const lastAiMessage = [...messages].reverse().find((m) => m.role === "assistant");
+
+  const handleRegenerate = () => {
+    if (!lastAiMessage || isStreaming) return;
+    const lastUserMsg = [...messages].reverse().find((m) => m.role === "user");
+    if (lastUserMsg) onSendMessage(lastUserMsg.content);
   };
 
   return (
@@ -86,17 +104,34 @@ export function ChatArea({
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
             </div>
           ) : messages.length === 0 && !streamingMessage ? (
-            <div className="flex flex-col items-center justify-center min-h-[50vh] text-center space-y-4 animate-in fade-in zoom-in duration-500 px-4">
-              <div className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-primary/10 flex items-center justify-center">
-                <span className="text-xl md:text-2xl font-serif text-primary">O'z</span>
+            <div className="flex flex-col items-center justify-center min-h-[50vh] text-center space-y-6 animate-in fade-in zoom-in duration-500 px-4">
+              <div className="flex flex-col items-center gap-3">
+                <div className="w-16 h-16 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center shadow-inner">
+                  <Sparkles className="w-7 h-7 text-primary" />
+                </div>
+                <div>
+                  <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-1">
+                    Xush kelibsiz!
+                  </h2>
+                  <p className="text-sm md:text-base text-muted-foreground max-w-xs md:max-w-sm">
+                    Men O'zbek AI — sizning shaxsiy sun'iy intellekt yordamchingizman. Nima haqida suhbatlashmoqchisiz?
+                  </p>
+                </div>
               </div>
-              <div>
-                <h2 className="text-xl md:text-2xl font-semibold text-foreground mb-2">
-                  Xush kelibsiz!
-                </h2>
-                <p className="text-sm md:text-base text-muted-foreground max-w-xs md:max-w-md">
-                  Men sizning shaxsiy sun'iy intellekt yordamchiningizman. Qanday yordam bera olaman?
-                </p>
+
+              {/* Quick prompt grid */}
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 w-full max-w-xl mt-2">
+                {QUICK_PROMPTS.map((p) => (
+                  <button
+                    key={p.label}
+                    onClick={() => handleSend(p.prompt)}
+                    className="flex flex-col items-start gap-1.5 rounded-xl border border-border bg-card hover:bg-muted hover:border-primary/30 transition-all p-3 text-left shadow-sm active:scale-[0.98]"
+                  >
+                    <span className="text-base">{p.icon}</span>
+                    <span className="text-xs font-semibold text-foreground leading-snug">{p.label}</span>
+                    <span className="text-[11px] text-muted-foreground leading-tight line-clamp-2">{p.prompt}</span>
+                  </button>
+                ))}
               </div>
             </div>
           ) : (
@@ -121,6 +156,19 @@ export function ChatArea({
         </div>
       </div>
 
+      {/* Regenerate button */}
+      {lastAiMessage && !isStreaming && messages.length > 0 && (
+        <div className="absolute bottom-[110px] left-1/2 -translate-x-1/2 z-10">
+          <button
+            onClick={handleRegenerate}
+            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground bg-background/90 backdrop-blur border border-border rounded-full px-3 py-1.5 shadow-sm hover:shadow transition-all hover:border-primary/30"
+          >
+            <RefreshCw className="w-3 h-3" />
+            Qayta javob olish
+          </button>
+        </div>
+      )}
+
       {/* Input bar */}
       <div className="absolute bottom-0 left-0 right-0 px-3 pb-3 pt-2 md:px-6 md:pb-5 bg-gradient-to-t from-background via-background/95 to-transparent">
         <div className="max-w-3xl mx-auto relative flex items-end shadow-lg shadow-primary/5 rounded-2xl bg-card border border-border overflow-hidden">
@@ -134,15 +182,22 @@ export function ChatArea({
             rows={1}
             data-testid="input-message"
           />
-          <div className="p-2">
+          <div className="flex items-center gap-1.5 p-2">
+            {input.length > 0 && (
+              <span className="text-[10px] text-muted-foreground tabular-nums">{input.length}</span>
+            )}
             <Button
               size="icon"
               className="h-9 w-9 md:h-10 md:w-10 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-transform active:scale-95"
-              onClick={handleSend}
+              onClick={() => handleSend()}
               disabled={!input.trim() || isStreaming}
               data-testid="button-send-message"
             >
-              <SendHorizontal className="w-4 h-4 md:w-5 md:h-5" />
+              {isStreaming ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <SendHorizontal className="w-4 h-4 md:w-5 md:h-5" />
+              )}
             </Button>
           </div>
         </div>

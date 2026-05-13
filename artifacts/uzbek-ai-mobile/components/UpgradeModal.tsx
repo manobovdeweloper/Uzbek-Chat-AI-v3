@@ -16,8 +16,8 @@ import { useColors } from "@/hooks/useColors";
 import { usePremium } from "@/contexts/PremiumContext";
 
 const CARD_NUMBER = "5614 6818 5899 7095";
-const TG_HANDLE = "@manobov_deweloper";
-const TG_URL = "https://t.me/manobov_deweloper";
+const TG_HANDLE = "@Manobov17";
+const TG_URL = "https://t.me/Manobov17";
 
 interface Props {
   visible: boolean;
@@ -27,11 +27,20 @@ interface Props {
 export function UpgradeModal({ visible, onClose }: Props) {
   const c = useColors();
   const { isPremium, activate } = usePremium();
+  const [step, setStep] = useState<1 | 2>(1);
   const [code, setCode] = useState("");
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  const handleClose = () => {
+    setStep(1);
+    setCode("");
+    setError(null);
+    setSuccess(false);
+    onClose();
+  };
 
   const copy = async () => {
     await Clipboard.setStringAsync(CARD_NUMBER.replace(/\s/g, ""));
@@ -49,7 +58,7 @@ export function UpgradeModal({ visible, onClose }: Props) {
       setCode("");
       setTimeout(() => {
         setSuccess(false);
-        onClose();
+        handleClose();
       }, 1400);
     } else {
       setError(err);
@@ -57,17 +66,18 @@ export function UpgradeModal({ visible, onClose }: Props) {
   };
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
       <View style={styles.backdrop}>
         <View style={[styles.sheet, { backgroundColor: c.background, borderColor: c.border }]}>
           <ScrollView contentContainerStyle={{ paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
+            {/* Header */}
             <View style={[styles.header, { backgroundColor: c.card, borderColor: c.primary }]}>
               <View style={styles.headerTopRow}>
                 <View style={[styles.crownPill, { backgroundColor: "rgba(0,240,255,0.12)", borderColor: c.primary }]}>
                   <Feather name="zap" size={12} color={c.primary} />
                   <Text style={[styles.crownPillText, { color: c.primary }]}>O'ZBEK AI PREMIUM</Text>
                 </View>
-                <Pressable onPress={onClose} hitSlop={10}>
+                <Pressable onPress={handleClose} hitSlop={10}>
                   <Feather name="x" size={20} color={c.mutedForeground} />
                 </Pressable>
               </View>
@@ -105,14 +115,14 @@ export function UpgradeModal({ visible, onClose }: Props) {
                   </Text>
                 </View>
               </View>
-            ) : (
+            ) : step === 1 ? (
+              /* ── STEP 1: Payment info ── */
               <View style={styles.body}>
-                {/* Step 1: Card */}
                 <View style={styles.stepRow}>
                   <Text style={[styles.stepLabel, { color: c.foreground }]}>1. To'lov qiling — $2 (~25 000 so'm)</Text>
                   <View style={[styles.verifiedBadge, { backgroundColor: "rgba(16,185,129,0.12)", borderColor: "rgba(16,185,129,0.5)" }]}>
                     <Feather name="shield" size={10} color="rgb(16,185,129)" />
-                    <Text style={styles.verifiedText}>Tasdiqlangan</Text>
+                    <Text style={styles.verifiedText}>Xavfsiz</Text>
                   </View>
                 </View>
                 <View style={[styles.card, { backgroundColor: c.card, borderColor: c.border }]}>
@@ -129,8 +139,7 @@ export function UpgradeModal({ visible, onClose }: Props) {
                   </View>
                 </View>
 
-                {/* Step 2: Telegram */}
-                <Text style={[styles.stepLabel, { color: c.foreground }]}>2. Skrinshotni adminga yuboring</Text>
+                <Text style={[styles.stepLabel, { color: c.foreground }]}>2. To'lov chekini Telegramga yuboring</Text>
                 <Pressable
                   onPress={() => Linking.openURL(TG_URL)}
                   style={[styles.tgRow, { backgroundColor: c.card, borderColor: c.border }]}
@@ -140,15 +149,38 @@ export function UpgradeModal({ visible, onClose }: Props) {
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.tgHandle, { color: c.foreground }]}>{TG_HANDLE}</Text>
-                    <Text style={[styles.tgSub, { color: c.mutedForeground }]}>Telegram'da ochish</Text>
+                    <Text style={[styles.tgSub, { color: c.mutedForeground }]}>To'lov skrinshotini yuboring</Text>
                   </View>
                   <Feather name="arrow-up-right" size={16} color={c.primary} />
                 </Pressable>
 
-                {/* Step 3: 6-digit Code */}
-                <Text style={[styles.stepLabel, { color: c.foreground }]}>
-                  3. 6 raqamli aktivatsiya kodini kiriting
+                <Text style={[styles.hint, { color: c.mutedForeground }]}>
+                  To'lovni amalga oshirganingizdan so'ng skrinshot (chek) ni {TG_HANDLE} ga yuboring. Admin sizga aktivatsiya kodini yuboradi.
                 </Text>
+
+                <Pressable
+                  onPress={() => setStep(2)}
+                  style={[styles.nextBtn, { backgroundColor: c.primary }]}
+                >
+                  <Text style={[styles.nextBtnText, { color: c.primaryForeground }]}>
+                    To'lov qildim — Kodni kiritish
+                  </Text>
+                  <Feather name="arrow-right" size={16} color={c.primaryForeground} />
+                </Pressable>
+              </View>
+            ) : (
+              /* ── STEP 2: Code input ── */
+              <View style={styles.body}>
+                <Pressable onPress={() => setStep(1)} style={styles.backBtn}>
+                  <Feather name="arrow-left" size={14} color={c.mutedForeground} />
+                  <Text style={[styles.backText, { color: c.mutedForeground }]}>Orqaga</Text>
+                </Pressable>
+
+                <Text style={[styles.stepLabel, { color: c.foreground }]}>Aktivatsiya kodi</Text>
+                <Text style={[styles.hint, { color: c.mutedForeground }]}>
+                  Admin tomonidan yuborilgan 6 raqamli kodni kiriting.
+                </Text>
+
                 <View style={styles.codeRow}>
                   <TextInput
                     value={code}
@@ -160,6 +192,7 @@ export function UpgradeModal({ visible, onClose }: Props) {
                     placeholderTextColor={c.mutedForeground}
                     keyboardType="number-pad"
                     maxLength={6}
+                    autoFocus
                     style={[
                       styles.codeInput,
                       { backgroundColor: c.card, borderColor: c.border, color: c.foreground },
@@ -193,6 +226,19 @@ export function UpgradeModal({ visible, onClose }: Props) {
                 {success && (
                   <Text style={[styles.successText, { color: c.primary }]}>✓ Premium faollashtirildi!</Text>
                 )}
+
+                {/* Reminder card */}
+                <View style={[styles.reminderCard, { backgroundColor: c.card, borderColor: c.border }]}>
+                  <View style={[styles.tgIcon, { backgroundColor: "#26A5E4" }]}>
+                    <Feather name="send" size={14} color="#fff" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.reminderTitle, { color: c.foreground }]}>Hali to'lov qilmadingizmi?</Text>
+                    <Text style={[styles.reminderSub, { color: c.mutedForeground }]}>
+                      Karta: {CARD_NUMBER} ga to'lang va skrinshotni {TG_HANDLE} ga yuboring.
+                    </Text>
+                  </View>
+                </View>
               </View>
             )}
           </ScrollView>
@@ -276,7 +322,23 @@ const styles = StyleSheet.create({
   tgHandle: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
   tgSub: { fontSize: 11, fontFamily: "Inter_400Regular" },
 
-  codeRow: { flexDirection: "row", gap: 8 },
+  hint: { fontSize: 11, fontFamily: "Inter_400Regular", lineHeight: 16, marginTop: 2 },
+
+  nextBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    padding: 14,
+    borderRadius: 14,
+    marginTop: 8,
+  },
+  nextBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+
+  backBtn: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 14, marginBottom: 2 },
+  backText: { fontSize: 12, fontFamily: "Inter_500Medium" },
+
+  codeRow: { flexDirection: "row", gap: 8, marginTop: 4 },
   codeInput: {
     flex: 1,
     height: 48,
@@ -293,6 +355,18 @@ const styles = StyleSheet.create({
 
   errorText: { fontSize: 12, fontFamily: "Inter_500Medium", marginTop: 6 },
   successText: { fontSize: 13, fontFamily: "Inter_600SemiBold", marginTop: 6 },
+
+  reminderCard: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginTop: 8,
+  },
+  reminderTitle: { fontSize: 12, fontFamily: "Inter_600SemiBold", marginBottom: 3 },
+  reminderSub: { fontSize: 11, fontFamily: "Inter_400Regular", lineHeight: 16 },
 
   successBox: {
     alignItems: "center",
