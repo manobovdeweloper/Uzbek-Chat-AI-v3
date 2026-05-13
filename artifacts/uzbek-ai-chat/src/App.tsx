@@ -5,6 +5,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/home";
 import { PremiumProvider } from "@/contexts/premium-context";
+import { useTheme } from "@/hooks/use-theme";
+
+export const ThemeContext = { useTheme };
 
 const queryClient = new QueryClient();
 
@@ -17,7 +20,8 @@ function Router() {
   );
 }
 
-function App() {
+function AppShell() {
+  useTheme();
   return (
     <QueryClientProvider client={queryClient}>
       <PremiumProvider>
@@ -32,4 +36,4 @@ function App() {
   );
 }
 
-export default App;
+export default AppShell;

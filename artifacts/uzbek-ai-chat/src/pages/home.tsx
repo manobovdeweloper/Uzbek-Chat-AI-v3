@@ -137,6 +137,7 @@ export default function Home() {
         isLoading={!!activeConversationId && (isLoadingConversation || isLoadingMessages)}
         onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
         isSidebarOpen={isSidebarOpen}
+        conversationTitle={activeConversation?.title ?? undefined}
       />
 
       <UpgradeModal open={upgradeOpen} onClose={() => setUpgradeOpen(false)} />
