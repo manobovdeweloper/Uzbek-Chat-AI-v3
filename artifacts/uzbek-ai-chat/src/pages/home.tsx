@@ -40,9 +40,7 @@ export default function Home() {
   const { getDraft, saveDraft, clearDraft } = useDraft(activeConversationId);
   const [draft, setDraft] = useState(() => getDraft());
 
-  useEffect(() => {
-    setDraft(getDraft());
-  }, [activeConversationId]);
+  useEffect(() => { setDraft(getDraft()); }, [activeConversationId]);
 
   const { data: conversations = [], isLoading: isLoadingConversations } = useListOpenaiConversations();
   const createConversation = useCreateOpenaiConversation();
@@ -70,46 +68,39 @@ export default function Home() {
   });
 
   const handleNewChat = useCallback(() => {
-    setActiveConversationId(null);
-    setIsSidebarOpen(false);
-    setDraft("");
+    setActiveConversationId(null); setIsSidebarOpen(false); setDraft("");
   }, []);
 
   const handleSelectConversation = useCallback((id: number) => {
-    setActiveConversationId(id);
-    setIsSidebarOpen(false);
+    setActiveConversationId(id); setIsSidebarOpen(false);
   }, []);
 
-  const handleSendMessage = useCallback(
-    async (content: string) => {
-      let currentId = activeConversationId;
-      if (!currentId) {
-        try {
-          const title = content.length > 40 ? content.substring(0, 40) + "..." : content;
-          const newConv = await createConversation.mutateAsync({ data: { title } });
-          currentId = newConv.id;
-          setActiveConversationId(newConv.id);
-          queryClient.invalidateQueries({ queryKey: getListOpenaiConversationsQueryKey() });
-        } catch { return; }
+  const handleSendMessage = useCallback(async (content: string) => {
+    let currentId = activeConversationId;
+    if (!currentId) {
+      try {
+        const title = content.length > 40 ? content.substring(0, 40) + "..." : content;
+        const newConv = await createConversation.mutateAsync({ data: { title } });
+        currentId = newConv.id;
+        setActiveConversationId(newConv.id);
+        queryClient.invalidateQueries({ queryKey: getListOpenaiConversationsQueryKey() });
+      } catch { return; }
+    }
+    if (currentId) {
+      clearDraft(); setDraft("");
+      if (!activeConversationId) {
+        await fetch(`/api/openai/conversations/${currentId}/messages`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content, tier: isPremium ? "premium" : "free" }),
+        });
+        queryClient.invalidateQueries({ queryKey: getGetOpenaiConversationQueryKey(currentId) });
+        queryClient.invalidateQueries({ queryKey: getListOpenaiMessagesQueryKey(currentId) });
+      } else {
+        sendMessage(content);
       }
-      if (currentId) {
-        clearDraft();
-        setDraft("");
-        if (!activeConversationId) {
-          await fetch(`/api/openai/conversations/${currentId}/messages`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ content, tier: isPremium ? "premium" : "free" }),
-          });
-          queryClient.invalidateQueries({ queryKey: getGetOpenaiConversationQueryKey(currentId) });
-          queryClient.invalidateQueries({ queryKey: getListOpenaiMessagesQueryKey(currentId) });
-        } else {
-          sendMessage(content);
-        }
-      }
-    },
-    [activeConversationId, createConversation, queryClient, sendMessage, isPremium, clearDraft]
-  );
+    }
+  }, [activeConversationId, createConversation, queryClient, sendMessage, isPremium, clearDraft]);
 
   const handleRenameConversation = useCallback(async (id: number, title: string) => {
     try {
@@ -123,6 +114,14 @@ export default function Home() {
     } catch {}
   }, [queryClient]);
 
+  const handleClearMessages = useCallback(async () => {
+    if (!activeConversationId) return;
+    try {
+      await fetch(`/api/openai/conversations/${activeConversationId}/messages`, { method: "DELETE" });
+      queryClient.invalidateQueries({ queryKey: getListOpenaiMessagesQueryKey(activeConversationId) });
+    } catch {}
+  }, [activeConversationId, queryClient]);
+
   const handleToggleBookmark = useCallback((msg: BookmarkedMessage) => {
     toggleBookmark({ ...msg, conversationTitle: activeConversation?.title ?? undefined });
   }, [toggleBookmark, activeConversation]);
@@ -130,7 +129,8 @@ export default function Home() {
   return (
     <div className="flex h-screen w-full overflow-hidden bg-background relative">
       {isSidebarOpen && (
-        <div className="fixed inset-0 z-20 bg-black/60 md:hidden" onClick={() => setIsSidebarOpen(false)} data-testid="sidebar-backdrop" />
+        <div className="fixed inset-0 z-20 bg-black/60 backdrop-blur-sm md:hidden"
+          onClick={() => setIsSidebarOpen(false)} data-testid="sidebar-backdrop" />
       )}
 
       <div className={`fixed md:relative z-30 md:z-auto h-full transition-transform duration-300 ease-in-out ${isSidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}`}>
@@ -156,6 +156,7 @@ export default function Home() {
         streamingMessage={streamingMessage}
         isStreaming={isStreaming}
         onSendMessage={handleSendMessage}
+        onClearMessages={activeConversationId ? handleClearMessages : undefined}
         isLoading={!!activeConversationId && (isLoadingConversation || isLoadingMessages)}
         onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
         isSidebarOpen={isSidebarOpen}
