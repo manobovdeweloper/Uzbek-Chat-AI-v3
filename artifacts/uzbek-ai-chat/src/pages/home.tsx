@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useListOpenaiConversations,
@@ -14,9 +14,14 @@ import { ChatArea } from "@/components/chat-area";
 import { useChatStream } from "@/hooks/use-chat-stream";
 import { usePremium } from "@/contexts/premium-context";
 import { useImageLimit } from "@/hooks/use-image-limit";
+import { useBookmarks } from "@/hooks/use-bookmarks";
+import { useDraft } from "@/hooks/use-draft";
+import { useSound } from "@/hooks/use-sound";
 import { UpgradeModal } from "@/components/upgrade-modal";
 import { DailyLimitModal } from "@/components/daily-limit-modal";
 import { PremiumToolsModal } from "@/components/premium-tools-modal";
+import { BookmarksPanel } from "@/components/bookmarks-panel";
+import type { BookmarkedMessage } from "@/hooks/use-bookmarks";
 
 export default function Home() {
   const [activeConversationId, setActiveConversationId] = useState<number | null>(null);
@@ -24,10 +29,20 @@ export default function Home() {
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [imageLimitOpen, setImageLimitOpen] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
+  const [bookmarksOpen, setBookmarksOpen] = useState(false);
   const queryClient = useQueryClient();
 
   const { isPremium } = usePremium();
   const { remaining: imgRemaining, limit: imgLimit, resetsAt: imgResetsAt } = useImageLimit();
+  const { bookmarks, isBookmarked, toggle: toggleBookmark, clear: clearBookmarks } = useBookmarks();
+  const { play: playSound } = useSound();
+
+  const { getDraft, saveDraft, clearDraft } = useDraft(activeConversationId);
+  const [draft, setDraft] = useState(() => getDraft());
+
+  useEffect(() => {
+    setDraft(getDraft());
+  }, [activeConversationId]);
 
   const { data: conversations = [], isLoading: isLoadingConversations } = useListOpenaiConversations();
   const createConversation = useCreateOpenaiConversation();
@@ -46,6 +61,7 @@ export default function Home() {
     conversationId: activeConversationId as number,
     tier: isPremium ? "premium" : "free",
     onFinished: () => {
+      playSound();
       if (activeConversationId) {
         queryClient.invalidateQueries({ queryKey: getGetOpenaiConversationQueryKey(activeConversationId) });
         queryClient.invalidateQueries({ queryKey: getListOpenaiMessagesQueryKey(activeConversationId) });
@@ -56,6 +72,7 @@ export default function Home() {
   const handleNewChat = useCallback(() => {
     setActiveConversationId(null);
     setIsSidebarOpen(false);
+    setDraft("");
   }, []);
 
   const handleSelectConversation = useCallback((id: number) => {
@@ -63,24 +80,21 @@ export default function Home() {
     setIsSidebarOpen(false);
   }, []);
 
-  // Text chat is now UNLIMITED for everyone — no gating here.
   const handleSendMessage = useCallback(
     async (content: string) => {
       let currentId = activeConversationId;
       if (!currentId) {
         try {
-          const title = content.length > 30 ? content.substring(0, 30) + "..." : content;
+          const title = content.length > 40 ? content.substring(0, 40) + "..." : content;
           const newConv = await createConversation.mutateAsync({ data: { title } });
           currentId = newConv.id;
           setActiveConversationId(newConv.id);
           queryClient.invalidateQueries({ queryKey: getListOpenaiConversationsQueryKey() });
-        } catch (err) {
-          console.error("Failed to create conversation", err);
-          return;
-        }
+        } catch { return; }
       }
-
       if (currentId) {
+        clearDraft();
+        setDraft("");
         if (!activeConversationId) {
           await fetch(`/api/openai/conversations/${currentId}/messages`, {
             method: "POST",
@@ -94,27 +108,32 @@ export default function Home() {
         }
       }
     },
-    [activeConversationId, createConversation, queryClient, sendMessage, isPremium]
+    [activeConversationId, createConversation, queryClient, sendMessage, isPremium, clearDraft]
   );
+
+  const handleRenameConversation = useCallback(async (id: number, title: string) => {
+    try {
+      await fetch(`/api/openai/conversations/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title }),
+      });
+      queryClient.invalidateQueries({ queryKey: getListOpenaiConversationsQueryKey() });
+      queryClient.invalidateQueries({ queryKey: getGetOpenaiConversationQueryKey(id) });
+    } catch {}
+  }, [queryClient]);
+
+  const handleToggleBookmark = useCallback((msg: BookmarkedMessage) => {
+    toggleBookmark({ ...msg, conversationTitle: activeConversation?.title ?? undefined });
+  }, [toggleBookmark, activeConversation]);
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-background relative">
       {isSidebarOpen && (
-        <div
-          className="fixed inset-0 z-20 bg-black/50 md:hidden"
-          onClick={() => setIsSidebarOpen(false)}
-          data-testid="sidebar-backdrop"
-        />
+        <div className="fixed inset-0 z-20 bg-black/60 md:hidden" onClick={() => setIsSidebarOpen(false)} data-testid="sidebar-backdrop" />
       )}
 
-      <div
-        className={`
-          fixed md:relative z-30 md:z-auto
-          h-full
-          transition-transform duration-300 ease-in-out
-          ${isSidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
-        `}
-      >
+      <div className={`fixed md:relative z-30 md:z-auto h-full transition-transform duration-300 ease-in-out ${isSidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}`}>
         <ChatSidebar
           conversations={conversations}
           activeConversationId={activeConversationId}
@@ -126,6 +145,9 @@ export default function Home() {
           imageLimit={imgLimit}
           onUpgrade={() => setUpgradeOpen(true)}
           onOpenTools={() => setToolsOpen(true)}
+          bookmarkCount={bookmarks.length}
+          onOpenBookmarks={() => setBookmarksOpen(true)}
+          onRenameConversation={handleRenameConversation}
         />
       </div>
 
@@ -138,30 +160,32 @@ export default function Home() {
         onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
         isSidebarOpen={isSidebarOpen}
         conversationTitle={activeConversation?.title ?? undefined}
+        conversationId={activeConversationId}
+        isBookmarked={isBookmarked}
+        onToggleBookmark={handleToggleBookmark}
+        onDraftChange={(v) => saveDraft(v)}
+        initialDraft={draft}
       />
 
       <UpgradeModal open={upgradeOpen} onClose={() => setUpgradeOpen(false)} />
       <DailyLimitModal
         open={imageLimitOpen}
         onClose={() => setImageLimitOpen(false)}
-        onUpgrade={() => {
-          setImageLimitOpen(false);
-          setUpgradeOpen(true);
-        }}
+        onUpgrade={() => { setImageLimitOpen(false); setUpgradeOpen(true); }}
         resetsAt={imgResetsAt}
         limit={imgLimit}
       />
       <PremiumToolsModal
         open={toolsOpen}
         onClose={() => setToolsOpen(false)}
-        onUpgradeRequest={() => {
-          setToolsOpen(false);
-          setUpgradeOpen(true);
-        }}
-        onImageLimitReached={() => {
-          setToolsOpen(false);
-          setImageLimitOpen(true);
-        }}
+        onUpgradeRequest={() => { setToolsOpen(false); setUpgradeOpen(true); }}
+        onImageLimitReached={() => { setToolsOpen(false); setImageLimitOpen(true); }}
+      />
+      <BookmarksPanel
+        open={bookmarksOpen}
+        onClose={() => setBookmarksOpen(false)}
+        bookmarks={bookmarks}
+        onClear={clearBookmarks}
       />
     </div>
   );

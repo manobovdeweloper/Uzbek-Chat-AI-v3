@@ -50,6 +50,25 @@ router.get("/conversations/:id", async (req, res) => {
   res.json({ ...conv, messages: msgs });
 });
 
+router.patch("/conversations/:id", async (req, res) => {
+  const id = Number(req.params.id);
+  const title = String((req.body as { title?: string })?.title ?? "").trim();
+  if (!id || !title) {
+    res.status(400).json({ error: "id va title kerak" });
+    return;
+  }
+  const [updated] = await db
+    .update(conversations)
+    .set({ title })
+    .where(eq(conversations.id, id))
+    .returning();
+  if (!updated) {
+    res.status(404).json({ error: "Conversation not found" });
+    return;
+  }
+  res.json(updated);
+});
+
 router.delete("/conversations/:id", async (req, res) => {
   const parsed = DeleteOpenaiConversationParams.safeParse({ id: Number(req.params.id) });
   if (!parsed.success) {
