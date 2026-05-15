@@ -19,6 +19,39 @@ import { useStreak } from "@/hooks/use-streak";
 import { usePinned } from "@/hooks/use-pinned";
 import { relativeTime } from "@/hooks/use-relative-time";
 
+/* ── Partner logos (defined early so they're available below) ───── */
+function OxfordLifeLogo() {
+  return (
+    <div className="flex items-center gap-1.5 select-none">
+      <div className="w-5 h-5 rounded-md flex items-center justify-center shadow-sm flex-shrink-0" style={{ background: "linear-gradient(135deg,#1a6b3a,#2d9e5e)" }}>
+        <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
+          <path d="M5.5 1L10 3.5v4L5.5 10 1 7.5v-4L5.5 1z" fill="none" stroke="white" strokeWidth="1.1" />
+          <path d="M5.5 3.5v4M3 4.8l2.5 1.2 2.5-1.2" stroke="white" strokeWidth="0.9" strokeLinecap="round" />
+        </svg>
+      </div>
+      <div className="leading-tight">
+        <div className="text-[9px] font-black tracking-widest uppercase" style={{ color: "#2d9e5e" }}>OXFORD</div>
+        <div className="text-[8px] font-bold tracking-wider text-sidebar-foreground/40 uppercase">LIFE</div>
+      </div>
+    </div>
+  );
+}
+
+function MRXLogo() {
+  return (
+    <div className="flex items-center gap-1.5 select-none">
+      <div className="w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0" style={{ background: "linear-gradient(135deg, hsl(var(--sidebar-primary)), hsl(var(--accent)))" }}>
+        <span className="text-[8px] font-black text-white tracking-tight leading-none">MX</span>
+      </div>
+      <div className="text-[12px] font-black tracking-tight leading-none">
+        <span style={{ color: "hsl(var(--sidebar-primary))" }}>M</span>
+        <span className="text-sidebar-foreground/50">R</span>
+        <span style={{ color: "hsl(var(--accent))" }}>X</span>
+      </div>
+    </div>
+  );
+}
+
 interface ChatSidebarProps {
   conversations: OpenaiConversation[];
   activeConversationId: number | null;
@@ -372,6 +405,11 @@ export function ChatSidebar({
 
       {/* Footer */}
       <div className="px-3.5 py-3 border-t border-sidebar-border space-y-2.5">
+        {/* Partner logos */}
+        <div className="flex items-center justify-between px-0.5 pb-1.5 border-b border-sidebar-border/50">
+          <OxfordLifeLogo />
+          <MRXLogo />
+        </div>
         <div className="flex items-center justify-between text-[10px] text-sidebar-foreground/20 px-0.5">
           <span>{conversations.length} ta suhbat</span>
           {streak >= 2 && <span className="flex items-center gap-1 text-amber-400/60"><Flame className="w-2.5 h-2.5" />{streak} kunlik streak</span>}
@@ -476,3 +514,4 @@ function ConvRow({ conv, isActive, isEditing, editTitle, editRef, onSelect, onDe
     </div>
   );
 }
+

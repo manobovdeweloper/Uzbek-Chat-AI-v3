@@ -55,7 +55,7 @@ export default function Home() {
     { query: { enabled: !!activeConversationId, queryKey: getListOpenaiMessagesQueryKey(activeConversationId as number) } }
   );
 
-  const { sendMessage, streamingMessage, isStreaming } = useChatStream({
+  const { sendMessage, streamingMessage, isStreaming, stopStreaming } = useChatStream({
     conversationId: activeConversationId as number,
     tier: isPremium ? "premium" : "free",
     onFinished: () => {
@@ -75,30 +75,45 @@ export default function Home() {
     setActiveConversationId(id); setIsSidebarOpen(false);
   }, []);
 
-  const handleSendMessage = useCallback(async (content: string) => {
+  const handleSendMessage = useCallback(async (content: string, imageBase64?: string) => {
     let currentId = activeConversationId;
     if (!currentId) {
       try {
-        const title = content.length > 40 ? content.substring(0, 40) + "..." : content;
-        const newConv = await createConversation.mutateAsync({ data: { title } });
+        const cleanTitle = content.replace(/^__IMG__[\s\S]*?__ENDIMG__/, "").trim();
+        const title = (imageBase64 && !cleanTitle)
+          ? "📷 Rasm tahlili"
+          : cleanTitle.length > 40 ? cleanTitle.substring(0, 40) + "..." : cleanTitle;
+        const newConv = await createConversation.mutateAsync({ data: { title: title || "Yangi suhbat" } });
         currentId = newConv.id;
         setActiveConversationId(newConv.id);
         queryClient.invalidateQueries({ queryKey: getListOpenaiConversationsQueryKey() });
       } catch { return; }
     }
-    if (currentId) {
-      clearDraft(); setDraft("");
-      if (!activeConversationId) {
-        await fetch(`/api/openai/conversations/${currentId}/messages`, {
+    if (!currentId) return;
+    clearDraft(); setDraft("");
+    // If we just created the conversation, useChatStream closure still has null id —
+    // call the SSE endpoint directly so streaming works immediately.
+    if (!activeConversationId) {
+      try {
+        const response = await fetch(`/api/openai/conversations/${currentId}/messages`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content, tier: isPremium ? "premium" : "free" }),
+          body: JSON.stringify({ content, tier: isPremium ? "premium" : "free", imageBase64 }),
         });
-        queryClient.invalidateQueries({ queryKey: getGetOpenaiConversationQueryKey(currentId) });
-        queryClient.invalidateQueries({ queryKey: getListOpenaiMessagesQueryKey(currentId) });
-      } else {
-        sendMessage(content);
-      }
+        if (response.body) {
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            decoder.decode(value, { stream: true });
+          }
+        }
+      } catch {}
+      queryClient.invalidateQueries({ queryKey: getGetOpenaiConversationQueryKey(currentId) });
+      queryClient.invalidateQueries({ queryKey: getListOpenaiMessagesQueryKey(currentId) });
+    } else {
+      sendMessage(content, imageBase64);
     }
   }, [activeConversationId, createConversation, queryClient, sendMessage, isPremium, clearDraft]);
 
@@ -156,6 +171,7 @@ export default function Home() {
         streamingMessage={streamingMessage}
         isStreaming={isStreaming}
         onSendMessage={handleSendMessage}
+        onStopStreaming={stopStreaming}
         onClearMessages={activeConversationId ? handleClearMessages : undefined}
         isLoading={!!activeConversationId && (isLoadingConversation || isLoadingMessages)}
         onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}

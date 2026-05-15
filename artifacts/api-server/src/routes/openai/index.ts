@@ -113,6 +113,7 @@ router.post("/conversations/:id/messages", async (req, res) => {
   const conversationId = idParsed.data.id;
   const userContent = bodyParsed.data.content;
   const tier = (req.body as { tier?: string })?.tier === "premium" ? "premium" : "free";
+  const imageBase64 = (req.body as { imageBase64?: string })?.imageBase64 ?? null;
 
   const [conv] = await db
     .select()
@@ -123,10 +124,15 @@ router.post("/conversations/:id/messages", async (req, res) => {
     return;
   }
 
+  // Store content: embed image marker so frontend can re-render it
+  const storedContent = imageBase64
+    ? `__IMG__${imageBase64}__ENDIMG__${userContent}`
+    : userContent;
+
   await db.insert(messages).values({
     conversationId,
     role: "user",
-    content: userContent,
+    content: storedContent,
   });
 
   const history = await db
@@ -135,10 +141,24 @@ router.post("/conversations/:id/messages", async (req, res) => {
     .where(eq(messages.conversationId, conversationId))
     .orderBy(messages.createdAt);
 
-  const chatMessages = history.map((m) => ({
-    role: m.role as "user" | "assistant" | "system",
-    content: m.content,
-  }));
+  // Build chat messages, handling embedded images
+  const chatMessages = history.map((m) => {
+    if (m.role !== "user") {
+      return { role: m.role as "user" | "assistant" | "system", content: m.content };
+    }
+    const imgMatch = m.content.match(/^__IMG__([\s\S]*?)__ENDIMG__([\s\S]*)$/);
+    if (imgMatch) {
+      const [, imgDataUrl, textContent] = imgMatch;
+      return {
+        role: "user" as const,
+        content: [
+          ...(textContent.trim() ? [{ type: "text" as const, text: textContent.trim() }] : [{ type: "text" as const, text: "Ushbu rasmni tahlil qilib ber." }]),
+          { type: "image_url" as const, image_url: { url: imgDataUrl } },
+        ],
+      };
+    }
+    return { role: m.role as "user" | "assistant" | "system", content: m.content };
+  });
 
   const baseSystem = `You are 'Uzbek Chat AI', created by Abdulloh Manopov. You are a polite, accurate, culturally-relevant assistant for Uzbek users. You can help with general questions, coding, creative writing, and translations.
 

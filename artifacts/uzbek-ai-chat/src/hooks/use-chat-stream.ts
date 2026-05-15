@@ -1,5 +1,4 @@
 import { useState, useCallback, useRef } from "react";
-import { OpenaiMessage } from "@workspace/api-client-react";
 
 interface UseChatStreamOptions {
   conversationId: number;
@@ -13,7 +12,7 @@ export function useChatStream({ conversationId, onFinished, tier }: UseChatStrea
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const sendMessage = useCallback(
-    async (content: string) => {
+    async (content: string, imageBase64?: string) => {
       if (!conversationId) return;
 
       setIsStreaming(true);
@@ -28,7 +27,7 @@ export function useChatStream({ conversationId, onFinished, tier }: UseChatStrea
         const response = await fetch(`/api/openai/conversations/${conversationId}/messages`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content, tier: tier ?? "free" }),
+          body: JSON.stringify({ content, tier: tier ?? "free", imageBase64 }),
           signal: abortControllerRef.current.signal,
         });
 
@@ -48,18 +47,11 @@ export function useChatStream({ conversationId, onFinished, tier }: UseChatStrea
             if (line.startsWith("data: ") && line.length > 6) {
               const dataStr = line.substring(6).trim();
               if (!dataStr || dataStr === "[DONE]") continue;
-
               try {
-                const data = JSON.parse(dataStr);
-                if (data.content) {
-                  setStreamingMessage((prev) => prev + data.content);
-                }
-                if (data.done) {
-                  break;
-                }
-              } catch (e) {
-                console.error("Failed to parse chunk:", dataStr);
-              }
+                const data = JSON.parse(dataStr) as { content?: string; done?: boolean };
+                if (data.content) setStreamingMessage((prev) => prev + data.content);
+                if (data.done) break;
+              } catch {}
             }
           }
         }
@@ -69,17 +61,15 @@ export function useChatStream({ conversationId, onFinished, tier }: UseChatStrea
         }
       } finally {
         setIsStreaming(false);
-        if (onFinished) {
-          onFinished();
-        }
+        onFinished?.();
       }
     },
     [conversationId, onFinished, tier]
   );
 
-  return {
-    sendMessage,
-    streamingMessage,
-    isStreaming,
-  };
+  const stopStreaming = useCallback(() => {
+    abortControllerRef.current?.abort();
+  }, []);
+
+  return { sendMessage, streamingMessage, isStreaming, stopStreaming };
 }
