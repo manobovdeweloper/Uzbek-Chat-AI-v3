@@ -167,8 +167,8 @@ export function MessageBubble({ message, isStreaming, isBookmarked, onBookmark, 
         {/* Bubble */}
         <div className={`relative rounded-2xl leading-relaxed shadow-sm text-[var(--chat-font-size,15px)] ${
           isUser
-            ? "bg-gradient-to-br from-primary to-primary/85 text-white rounded-tr-sm px-3.5 py-2.5 md:px-4 md:py-3"
-            : "bg-card border border-border/60 text-card-foreground rounded-tl-sm px-3.5 py-3 md:px-4 md:py-3.5 prose prose-sm dark:prose-invert max-w-none"
+            ? "bg-gradient-to-br from-primary to-primary/85 text-white rounded-tr-sm px-3.5 py-2.5 md:px-4 md:py-3 shadow-primary/20"
+            : "bg-card border border-border/60 border-l-[3px] border-l-primary/35 text-card-foreground rounded-tl-sm px-3.5 py-3 md:px-4 md:py-3.5 prose prose-sm dark:prose-invert max-w-none"
         } ${searchQuery && message.content.toLowerCase().includes(searchQuery.toLowerCase()) ? "ring-2 ring-yellow-400/40" : ""}`}>
 
           {/* Image attachment */}
@@ -201,11 +201,7 @@ export function MessageBubble({ message, isStreaming, isBookmarked, onBookmark, 
                   {displayText}
                 </ReactMarkdown>
                 {isStreaming && (
-                  <span className="inline-flex items-end gap-0.5 ml-1 align-middle h-4">
-                    <span className="thinking-dot w-1.5 h-1.5 rounded-full bg-primary inline-block" />
-                    <span className="thinking-dot w-1.5 h-1.5 rounded-full bg-primary inline-block" />
-                    <span className="thinking-dot w-1.5 h-1.5 rounded-full bg-primary inline-block" />
-                  </span>
+                  <span className="inline-block w-[2px] h-[1.1em] bg-primary/80 ml-0.5 align-middle rounded-sm cursor-blink" />
                 )}
               </div>
             )}

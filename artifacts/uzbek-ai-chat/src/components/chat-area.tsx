@@ -2,6 +2,7 @@ import {
   SendHorizontal, Menu, X, RefreshCw, Sparkles, ChevronDown,
   Download, Keyboard, Search, AArrowDown, AArrowUp, StopCircle,
   MessageSquare, Eraser, Zap, Copy, Check, ImagePlus, XCircle,
+  Mic, MicOff,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -32,23 +33,27 @@ interface ChatAreaProps {
 }
 
 const QUICK_PROMPTS = [
-  { icon: "✍️", label: "Matn",       prompt: "Menga qisqa motivatsion xat yozib bering." },
-  { icon: "🧠", label: "Tushuntir",  prompt: "Sun'iy intellekt nima? Oddiy tilda tushuntir." },
-  { icon: "💡", label: "G'oya",      prompt: "O'zbekiston uchun 5 ta innovatsion biznes g'oyasi." },
-  { icon: "🌍", label: "Tarjima",    prompt: "Bu jumlani inglizchaga tarjima qil: 'Bilim — kuch.'" },
-  { icon: "📝", label: "Rezyume",    prompt: "Dasturchi uchun professional rezyume namunasi yoz." },
-  { icon: "🎯", label: "Maslahat",   prompt: "Ingliz tilini tez o'rganish uchun eng samarali maslahatlar?" },
-  { icon: "📖", label: "Hikoya",     prompt: "O'zbek udumi haqida qisqa hikoya yoz." },
-  { icon: "🖥️", label: "Kod",       prompt: "Python da Fibonacci ketma-ketligini hisoblash." },
-  { icon: "📊", label: "Tahlil",     prompt: "O'zbekiston iqtisodiyotining so'nggi tendentsiyalari." },
-  { icon: "🎨", label: "She'r",      prompt: "Bahor haqida o'zbekcha she'r yoz." },
-  { icon: "🔢", label: "Math",       prompt: "Integralni tushuntir: ∫x²dx — misol bilan." },
-  { icon: "⚖️", label: "Solishtir", prompt: "Python va JavaScript o'rtasidagi asosiy farqlar." },
+  { icon: "✍️", label: "Matn",       grad: "from-violet-500/20 to-purple-600/8",  prompt: "Menga qisqa motivatsion xat yozib bering." },
+  { icon: "🧠", label: "Tushuntir",  grad: "from-blue-500/20 to-indigo-600/8",    prompt: "Sun'iy intellekt nima? Oddiy tilda tushuntir." },
+  { icon: "💡", label: "G'oya",      grad: "from-amber-400/20 to-orange-500/8",   prompt: "O'zbekiston uchun 5 ta innovatsion biznes g'oyasi." },
+  { icon: "🌍", label: "Tarjima",    grad: "from-emerald-500/20 to-teal-600/8",   prompt: "Bu jumlani inglizchaga tarjima qil: 'Bilim — kuch.'" },
+  { icon: "📝", label: "Rezyume",    grad: "from-sky-500/20 to-blue-600/8",       prompt: "Dasturchi uchun professional rezyume namunasi yoz." },
+  { icon: "🎯", label: "Maslahat",   grad: "from-rose-500/20 to-pink-600/8",      prompt: "Ingliz tilini tez o'rganish uchun eng samarali maslahatlar?" },
+  { icon: "📖", label: "Hikoya",     grad: "from-indigo-500/20 to-violet-600/8",  prompt: "O'zbek udumi haqida qisqa hikoya yoz." },
+  { icon: "🖥️", label: "Kod",       grad: "from-cyan-500/20 to-sky-600/8",       prompt: "Python da Fibonacci ketma-ketligini hisoblash." },
+  { icon: "📊", label: "Tahlil",     grad: "from-teal-500/20 to-emerald-600/8",   prompt: "O'zbekiston iqtisodiyotining so'nggi tendentsiyalari." },
+  { icon: "🎨", label: "She'r",      grad: "from-pink-500/20 to-rose-600/8",      prompt: "Bahor haqida o'zbekcha she'r yoz." },
+  { icon: "🔢", label: "Math",       grad: "from-orange-500/20 to-amber-600/8",   prompt: "Integralni tushuntir: ∫x²dx — misol bilan." },
+  { icon: "⚖️", label: "Solishtir", grad: "from-slate-500/20 to-zinc-600/8",     prompt: "Python va JavaScript o'rtasidagi asosiy farqlar." },
 ];
 
 const SMART_REPLIES = [
-  "Ko'proq tushuntir", "Misol keltir", "Boshqacha usul?",
-  "Qisqaroq qil", "Davom et", "O'zbekcha yoz",
+  { icon: "🔍", text: "Ko'proq tushuntir" },
+  { icon: "💡", text: "Misol keltir" },
+  { icon: "🔄", text: "Boshqacha usul?" },
+  { icon: "✂️", text: "Qisqaroq qil" },
+  { icon: "▶️", text: "Davom et" },
+  { icon: "🇺🇿", text: "O'zbekcha yoz" },
 ];
 
 const THINKING = [
@@ -76,6 +81,10 @@ export function ChatArea({
   // Image attachment state
   const [attachedImage, setAttachedImage] = useState<{ dataUrl: string; name: string } | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+
+  // Voice input state
+  const [isRecording, setIsRecording] = useState(false);
+  const recognitionRef = useRef<{ stop: () => void } | null>(null);
 
   const scrollRef   = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -155,6 +164,37 @@ export function ChatArea({
     };
     reader.readAsDataURL(file);
     e.target.value = "";
+  };
+
+  const toggleVoice = () => {
+    if (isRecording) {
+      recognitionRef.current?.stop();
+      setIsRecording(false);
+      return;
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) { showToast("Brauzeringiz ovoz kiritishni qo'llab-quvvatlamaydi", "error"); return; }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rec: any = new SR();
+    rec.lang = "uz-UZ";
+    rec.interimResults = true;
+    rec.continuous = false;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    rec.onresult = (e: any) => {
+      const t = Array.from(e.results as any[]).map((r: any) => r[0].transcript).join("");
+      setInput(t); onDraftChange?.(t);
+      if (textareaRef.current) {
+        textareaRef.current.style.height = "auto";
+        textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 200)}px`;
+      }
+    };
+    rec.onend = () => setIsRecording(false);
+    rec.onerror = () => { setIsRecording(false); showToast("Ovoz kiritishda xato", "error"); };
+    rec.start();
+    recognitionRef.current = rec;
+    setIsRecording(true);
+    showToast("🎙️ Gapiring...", "info");
   };
 
   const handleExport = () => {
@@ -373,11 +413,12 @@ export function ChatArea({
               </div>
               {/* Quick prompts — 2 cols on mobile, 3-4 on desktop */}
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 w-full max-w-2xl">
-                {QUICK_PROMPTS.map((p) => (
+                {QUICK_PROMPTS.map((p, i) => (
                   <button key={p.label} onClick={() => handleSend(p.prompt)}
-                    className="flex flex-col items-start gap-1.5 md:gap-2 rounded-2xl border border-border bg-card/80 hover:bg-muted/60 hover:border-primary/30 hover:-translate-y-0.5 hover:shadow-md transition-all p-2.5 md:p-3 text-left active:scale-[0.97] group/card backdrop-blur-sm">
-                    <span className="text-lg md:text-xl">{p.icon}</span>
-                    <span className="text-[10px] md:text-[11px] font-semibold text-foreground/65 group-hover/card:text-primary transition-colors leading-tight">{p.label}</span>
+                    style={{ animationDelay: `${i * 40}ms` }}
+                    className={`flex flex-col items-start gap-1.5 md:gap-2 rounded-2xl border border-border/70 bg-gradient-to-br ${p.grad} hover:border-primary/40 hover:-translate-y-1 hover:shadow-lg transition-all duration-200 p-2.5 md:p-3 text-left active:scale-[0.97] group/card backdrop-blur-sm animate-in fade-in zoom-in-95`}>
+                    <span className="text-xl md:text-2xl leading-none drop-shadow-sm">{p.icon}</span>
+                    <span className="text-[10px] md:text-[11px] font-bold text-foreground/60 group-hover/card:text-primary transition-colors leading-tight">{p.label}</span>
                   </button>
                 ))}
               </div>
@@ -415,10 +456,10 @@ export function ChatArea({
               )}
               {lastAiMsg && !isStreaming && !searchQuery && (
                 <div className="flex flex-wrap gap-2 pl-10 pt-1">
-                  {SMART_REPLIES.slice(0, 4).map((r) => (
-                    <button key={r} onClick={() => handleSend(r)}
-                      className="text-xs px-3 py-1.5 rounded-full border border-border bg-card/80 hover:bg-primary/10 hover:border-primary/40 hover:text-primary transition-all text-muted-foreground active:scale-95 backdrop-blur-sm shadow-sm font-medium">
-                      {r}
+                  {SMART_REPLIES.slice(0, 5).map((r) => (
+                    <button key={r.text} onClick={() => handleSend(r.text)}
+                      className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border border-border bg-card/80 hover:bg-primary/10 hover:border-primary/40 hover:text-primary transition-all text-muted-foreground active:scale-95 backdrop-blur-sm shadow-sm font-medium">
+                      <span className="text-sm leading-none">{r.icon}</span>{r.text}
                     </button>
                   ))}
                 </div>
@@ -475,6 +516,14 @@ export function ChatArea({
                 className="p-2 rounded-xl transition-all text-muted-foreground hover:text-primary hover:bg-primary/10"
                 title="Rasm biriktirish">
                 <ImagePlus className="w-4 h-4" />
+              </button>
+              {/* Voice input */}
+              <button
+                type="button"
+                onClick={toggleVoice}
+                className={`p-2 rounded-xl transition-all ${isRecording ? "text-rose-500 bg-rose-500/10 recording-pulse" : "text-muted-foreground hover:text-primary hover:bg-primary/10"}`}
+                title={isRecording ? "Ovozni to'xtatish" : "Ovozli kiritish"}>
+                {isRecording ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
               </button>
               <input
                 ref={imageInputRef}
