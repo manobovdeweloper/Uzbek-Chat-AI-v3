@@ -7,6 +7,7 @@ import { recordHeartbeat } from "../admin/index.js";
 const router = Router();
 
 router.get("/ads", async (_req, res) => {
+  res.setHeader("Cache-Control", "no-store");
   const result = await db
     .select()
     .from(ads)

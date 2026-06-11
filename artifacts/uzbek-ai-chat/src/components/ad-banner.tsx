@@ -20,7 +20,7 @@ export function AdBanner() {
   const [current, setCurrent] = useState(0);
 
   useEffect(() => {
-    fetch("/api/public/ads")
+    fetch("/api/public/ads", { cache: "no-store" })
       .then((r) => r.json())
       .then((data: Ad[]) => setAds(data))
       .catch(() => {});
