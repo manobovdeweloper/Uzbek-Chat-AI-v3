@@ -196,8 +196,8 @@ export function ChatSidebar({
         <div className="relative flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="relative">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary via-primary/90 to-accent flex items-center justify-center shadow-lg shadow-primary/25">
-                <Sparkles className="w-4.5 h-4.5 text-white" />
+              <div className="w-9 h-9 rounded-xl overflow-hidden shadow-lg shadow-primary/25 flex-shrink-0">
+                <img src="/logo.png" alt="O'zbek AI" className="w-full h-full object-cover" />
               </div>
               <div className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-sidebar flex items-center justify-center">
                 <div className="w-1 h-1 rounded-full bg-white animate-ping" />
@@ -208,7 +208,7 @@ export function ChatSidebar({
               <div className="flex items-center gap-1.5">
                 {isPremium
                   ? <span className="text-[10px] font-bold text-primary flex items-center gap-0.5"><Crown className="w-2.5 h-2.5" />Premium</span>
-                  : <span className="text-[10px] text-sidebar-foreground/30">Bepul · v2.1</span>}
+                  : <span className="text-[10px] text-sidebar-foreground/30">Bepul · v5.2</span>}
                 {streak >= 2 && (
                   <span className="flex items-center gap-0.5 text-[10px] font-bold text-amber-400 ml-1">
                     <Flame className="w-2.5 h-2.5 streak-glow" />{streak}

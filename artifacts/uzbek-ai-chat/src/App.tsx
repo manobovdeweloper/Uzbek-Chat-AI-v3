@@ -40,7 +40,7 @@ const clerkAppearance = {
   options: {
     logoPlacement: "inside" as const,
     logoLinkUrl: basePath || "/",
-    logoImageUrl: `${window.location.origin}${basePath}/logo.svg`,
+    logoImageUrl: `${window.location.origin}${basePath}/logo.png`,
     socialButtonsVariant: "blockButton" as const,
   },
   variables: {
@@ -123,11 +123,9 @@ function SignInPage() {
       <AuthBackground />
       <div className="relative z-10 w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4"
-            style={{ background: "linear-gradient(135deg, #7c3aed, #4f46e5)", boxShadow: "0 0 40px rgba(124,58,237,0.5), 0 0 80px rgba(124,58,237,0.2)" }}>
-            <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl mb-4 overflow-hidden"
+            style={{ boxShadow: "0 0 40px rgba(124,58,237,0.4), 0 0 80px rgba(124,58,237,0.15)" }}>
+            <img src="/logo.png" alt="O'zbek AI" className="w-full h-full object-cover" />
           </div>
           <h1 className="text-3xl font-black text-white tracking-tight mb-1">O'zbek AI</h1>
           <p className="text-gray-400 text-sm">Uzbekiston'ning aqlli yordamchisi</p>
@@ -162,11 +160,9 @@ function SignUpPage() {
       <AuthBackground />
       <div className="relative z-10 w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4"
-            style={{ background: "linear-gradient(135deg, #7c3aed, #4f46e5)", boxShadow: "0 0 40px rgba(124,58,237,0.5), 0 0 80px rgba(124,58,237,0.2)" }}>
-            <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl mb-4 overflow-hidden"
+            style={{ boxShadow: "0 0 40px rgba(124,58,237,0.4), 0 0 80px rgba(124,58,237,0.15)" }}>
+            <img src="/logo.png" alt="O'zbek AI" className="w-full h-full object-cover" />
           </div>
           <h1 className="text-3xl font-black text-white tracking-tight mb-1">O'zbek AI</h1>
           <p className="text-gray-400 text-sm">Hisob yarating — bepul!</p>
