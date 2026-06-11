@@ -397,8 +397,6 @@ export function ChatArea({
                 </div>
                 {/* Logos strip */}
                 <div className="flex items-center gap-4 flex-wrap justify-center">
-                  <OxfordLifeLogo />
-                  <div className="w-px h-5 bg-border" />
                   <MRXLogo />
                 </div>
                 {/* Stats */}
@@ -572,23 +570,6 @@ export function ChatArea({
 }
 
 /* ── Branded logos ───────────────────────────────────────────────── */
-function OxfordLifeLogo() {
-  return (
-    <div className="flex items-center gap-1.5 select-none">
-      <div className="w-6 h-6 rounded-lg flex items-center justify-center shadow-sm" style={{ background: "linear-gradient(135deg,#1a6b3a,#2d9e5e)" }}>
-        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-          <path d="M7 1L12.5 4v6L7 13 1.5 10V4L7 1z" fill="none" stroke="white" strokeWidth="1.2" />
-          <path d="M7 4v6M4 5.5l3 1.5 3-1.5" stroke="white" strokeWidth="1" strokeLinecap="round" />
-        </svg>
-      </div>
-      <div className="leading-tight">
-        <span className="text-[10px] font-black tracking-wider" style={{ color: "#1a6b3a" }}>OXFORD</span>
-        <span className="text-[10px] font-black tracking-wider text-foreground/50"> LIFE</span>
-      </div>
-    </div>
-  );
-}
-
 function MRXLogo() {
   return (
     <div className="flex items-center gap-1 select-none">

@@ -153,6 +153,32 @@ function ClerkQueryClientCacheInvalidator() {
   return null;
 }
 
+function HeartbeatPinger() {
+  const { addListener } = useClerk();
+  const userIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const unsub = addListener(({ user }) => { userIdRef.current = user?.id ?? null; });
+    return unsub;
+  }, [addListener]);
+
+  useEffect(() => {
+    const ping = () => {
+      const userId = userIdRef.current ?? `anon_${Math.random().toString(36).slice(2, 8)}`;
+      fetch("/api/public/heartbeat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId }),
+      }).catch(() => {});
+    };
+    ping();
+    const timer = setInterval(ping, 30_000);
+    return () => clearInterval(timer);
+  }, []);
+
+  return null;
+}
+
 function HomeRedirect() {
   return (
     <>
@@ -220,6 +246,7 @@ function ClerkProviderWithRoutes() {
     >
       <QueryClientProvider client={queryClient}>
         <ClerkQueryClientCacheInvalidator />
+        <HeartbeatPinger />
         <Router />
       </QueryClientProvider>
     </ClerkProvider>

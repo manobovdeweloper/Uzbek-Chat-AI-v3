@@ -20,24 +20,7 @@ import { useStreak } from "@/hooks/use-streak";
 import { usePinned } from "@/hooks/use-pinned";
 import { relativeTime } from "@/hooks/use-relative-time";
 
-/* ── Partner logos (defined early so they're available below) ───── */
-function OxfordLifeLogo() {
-  return (
-    <div className="flex items-center gap-1.5 select-none">
-      <div className="w-5 h-5 rounded-md flex items-center justify-center shadow-sm flex-shrink-0" style={{ background: "linear-gradient(135deg,#1a6b3a,#2d9e5e)" }}>
-        <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
-          <path d="M5.5 1L10 3.5v4L5.5 10 1 7.5v-4L5.5 1z" fill="none" stroke="white" strokeWidth="1.1" />
-          <path d="M5.5 3.5v4M3 4.8l2.5 1.2 2.5-1.2" stroke="white" strokeWidth="0.9" strokeLinecap="round" />
-        </svg>
-      </div>
-      <div className="leading-tight">
-        <div className="text-[9px] font-black tracking-widest uppercase" style={{ color: "#2d9e5e" }}>OXFORD</div>
-        <div className="text-[8px] font-bold tracking-wider text-sidebar-foreground/40 uppercase">LIFE</div>
-      </div>
-    </div>
-  );
-}
-
+/* ── Partner logos ───────────────────────────────────────────────── */
 function MRXLogo() {
   return (
     <div className="flex items-center gap-1.5 select-none">
@@ -416,8 +399,7 @@ export function ChatSidebar({
           </div>
         )}
         {/* Partner logos */}
-        <div className="flex items-center justify-between px-0.5 pb-1.5 border-b border-sidebar-border/50">
-          <OxfordLifeLogo />
+        <div className="flex items-center justify-end px-0.5 pb-1.5 border-b border-sidebar-border/50">
           <MRXLogo />
         </div>
         <div className="flex items-center justify-between text-[10px] text-sidebar-foreground/20 px-0.5">

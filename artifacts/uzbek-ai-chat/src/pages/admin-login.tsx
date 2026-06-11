@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 
 const ADMIN_EMAIL = "abdullohmanopov24@gmail.com";
-const ADMIN_PASSWORD = "manobov1122";
+const ADMIN_PASSWORD = "manopov1122";
 
 export default function AdminLogin() {
   const [, setLocation] = useLocation();
@@ -10,6 +10,12 @@ export default function AdminLogin() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (localStorage.getItem("adminAuth") === ADMIN_PASSWORD) {
+      setLocation("/admin");
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
