@@ -1,9 +1,9 @@
 import {
   Plus, MessageSquare, Trash2, Search, X, Sun, Moon,
   ChevronLeft, ChevronRight, Edit2, Volume2, VolumeX,
-  Bookmark, Pin, Flame, Crown, Sparkles, FileText,
-  Image as ImageIcon, Mic, BarChart2,
+  Bookmark, Pin, Flame, Crown, Sparkles, Image as ImageIcon, LogOut,
 } from "lucide-react";
+import { useUser, useClerk } from "@clerk/react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -92,6 +92,8 @@ export function ChatSidebar({
   isLoading, isPremium, imageRemaining, imageLimit, onUpgrade, onOpenTools,
   bookmarkCount, onOpenBookmarks, onRenameConversation,
 }: ChatSidebarProps) {
+  const { user } = useUser();
+  const { signOut } = useClerk();
   const queryClient = useQueryClient();
   const deleteMutation = useDeleteOpenaiConversation();
   const [search, setSearch] = useState("");
@@ -319,29 +321,6 @@ export function ChatSidebar({
         </button>
       </div>
 
-      {/* Tools */}
-      <div className="px-3.5 pb-1">
-        <p className="px-1 pb-1 text-[9px] font-extrabold text-sidebar-foreground/20 uppercase tracking-[0.12em]">Ilg'or vositalar</p>
-        {([
-          { icon: ImageIcon, label: "Rasm Yaratish",  sub: isPremium ? "HD · Cheksiz" : `${imageRemaining}/${imageLimit} qoldi`, crown: false },
-          { icon: FileText,  label: "PDF Tahlilchi",  sub: isPremium ? "Faol" : "Premium",                                       crown: !isPremium },
-          { icon: Mic,       label: "Ovozli Suhbat",  sub: isPremium ? "Faol" : "Premium",                                       crown: !isPremium },
-          { icon: BarChart2, label: "Statistika",     sub: `${conversations.length} suhbat`,                                     crown: false },
-        ] as const).map(({ icon: Icon, label, sub, crown }) => (
-          <button key={label} onClick={onOpenTools}
-            className="w-full flex items-center gap-2.5 px-2 py-2 rounded-xl text-[11px] text-sidebar-foreground/55 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-all mb-0.5">
-            <div className="w-6 h-6 rounded-lg bg-sidebar-accent/80 flex items-center justify-center flex-shrink-0">
-              <Icon className="w-3.5 h-3.5" />
-            </div>
-            <div className="flex-1 text-left min-w-0">
-              <div className="font-semibold truncate">{label}</div>
-              <div className={`text-[10px] ${crown ? "text-primary/60" : "text-sidebar-foreground/30"}`}>{sub}</div>
-            </div>
-            {crown && <Crown className="w-3 h-3 text-primary/40 flex-shrink-0" />}
-          </button>
-        ))}
-      </div>
-
       {/* Conversations */}
       <ScrollArea className="flex-1 px-2.5">
         <div className="pb-4">
@@ -405,6 +384,33 @@ export function ChatSidebar({
 
       {/* Footer */}
       <div className="px-3.5 py-3 border-t border-sidebar-border space-y-2.5">
+        {/* User profile */}
+        {user && (
+          <div className="flex items-center gap-2.5 px-0.5 pb-2 border-b border-sidebar-border/50">
+            <div className="relative flex-shrink-0">
+              {user.imageUrl ? (
+                <img src={user.imageUrl} alt="" className="w-8 h-8 rounded-full object-cover" />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white text-xs font-bold">
+                  {(user.firstName?.[0] ?? user.emailAddresses[0]?.emailAddress?.[0] ?? "U").toUpperCase()}
+                </div>
+              )}
+              <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-sidebar" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[11px] font-semibold text-sidebar-foreground truncate">
+                {user.firstName ?? user.emailAddresses[0]?.emailAddress?.split("@")[0] ?? "Foydalanuvchi"}
+              </p>
+              <p className="text-[10px] text-sidebar-foreground/30 truncate">
+                {user.emailAddresses[0]?.emailAddress}
+              </p>
+            </div>
+            <button onClick={() => signOut()} title="Chiqish"
+              className="p-1.5 rounded-lg hover:bg-red-500/10 text-sidebar-foreground/25 hover:text-red-400 transition-all flex-shrink-0">
+              <LogOut className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
         {/* Partner logos */}
         <div className="flex items-center justify-between px-0.5 pb-1.5 border-b border-sidebar-border/50">
           <OxfordLifeLogo />

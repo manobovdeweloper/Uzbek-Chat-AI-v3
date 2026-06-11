@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
+import { useUser } from "@clerk/react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useListOpenaiConversations,
@@ -24,6 +25,7 @@ import { BookmarksPanel } from "@/components/bookmarks-panel";
 import type { BookmarkedMessage } from "@/hooks/use-bookmarks";
 
 export default function Home() {
+  const { user } = useUser();
   const [activeConversationId, setActiveConversationId] = useState<number | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
@@ -83,7 +85,8 @@ export default function Home() {
         const title = (imageBase64 && !cleanTitle)
           ? "📷 Rasm tahlili"
           : cleanTitle.length > 40 ? cleanTitle.substring(0, 40) + "..." : cleanTitle;
-        const newConv = await createConversation.mutateAsync({ data: { title: title || "Yangi suhbat" } });
+        const userEmail = user?.emailAddresses[0]?.emailAddress ?? undefined;
+        const newConv = await createConversation.mutateAsync({ data: { title: title || "Yangi suhbat", userEmail } as any });
         currentId = newConv.id;
         setActiveConversationId(newConv.id);
         queryClient.invalidateQueries({ queryKey: getListOpenaiConversationsQueryKey() });

@@ -2,6 +2,7 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import { conversations, messages } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
+import { getAuth } from "@clerk/express";
 import { openai, generateImageBuffer } from "@workspace/integrations-openai-ai-server";
 import { CreateOpenaiConversationBody, SendOpenaiMessageBody, GetOpenaiConversationParams, DeleteOpenaiConversationParams, ListOpenaiMessagesParams, SendOpenaiMessageParams } from "@workspace/api-zod";
 
@@ -21,9 +22,12 @@ router.post("/conversations", async (req, res) => {
     res.status(400).json({ error: "Invalid request body" });
     return;
   }
+  const auth = getAuth(req);
+  const userId = auth?.userId ?? null;
+  const userEmail = (req.body as { userEmail?: string }).userEmail ?? null;
   const [conversation] = await db
     .insert(conversations)
-    .values({ title: parsed.data.title })
+    .values({ title: parsed.data.title, userId, userEmail })
     .returning();
   res.status(201).json(conversation);
 });
