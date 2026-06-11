@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
+import { useUser } from "@clerk/react";
 
+const ADMIN_EMAIL = "abdullohmanopov24@gmail.com";
 const ADMIN_PASSWORD = "manopov1122";
 const H = { "x-admin-secret": ADMIN_PASSWORD, "Content-Type": "application/json" };
 
@@ -64,6 +66,7 @@ const textareaCls = `${inputCls} resize-none`;
 
 export default function AdminPanel() {
   const [, setLocation] = useLocation();
+  const { user, isLoaded } = useUser();
   const [tab, setTab] = useState<Tab>("stats");
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [ads, setAds] = useState<Ad[]>([]);
@@ -86,15 +89,26 @@ export default function AdminPanel() {
   const [postPinned, setPostPinned] = useState(false); const [postActive, setPostActive] = useState(true);
   const [postLoading, setPostLoading] = useState(false); const [postError, setPostError] = useState("");
 
-  const isAuthed = () => localStorage.getItem("adminAuth") === ADMIN_PASSWORD;
+  const isClerkAdmin = () =>
+    isLoaded && !!user && (user.emailAddresses[0]?.emailAddress ?? "") === ADMIN_EMAIL;
+
+  const isAuthed = () =>
+    localStorage.getItem("adminAuth") === ADMIN_PASSWORD || isClerkAdmin();
 
   useEffect(() => {
+    if (!isLoaded) return; // wait for Clerk to load
+    // If signed in as admin via Clerk, auto-grant localStorage token
+    if (isClerkAdmin()) {
+      localStorage.setItem("adminAuth", ADMIN_PASSWORD);
+    }
     if (!isAuthed()) { setLocation("/admin/login"); return; }
     fetchAll();
     // Poll stats every 30s for real-time online count
-    pollRef.current = setInterval(fetchStats, 30_000);
-    return () => { if (pollRef.current) clearInterval(pollRef.current); };
-  }, []);
+    if (!pollRef.current) {
+      pollRef.current = setInterval(fetchStats, 30_000);
+    }
+    return () => { if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; } };
+  }, [isLoaded, user]);
 
   const fetchStats = async () => {
     try {

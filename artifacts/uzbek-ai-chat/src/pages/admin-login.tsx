@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
+import { useUser } from "@clerk/react";
 
 const ADMIN_EMAIL = "abdullohmanopov24@gmail.com";
 const ADMIN_PASSWORD = "manopov1122";
 
 export default function AdminLogin() {
   const [, setLocation] = useLocation();
+  const { user, isLoaded } = useUser();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -14,8 +16,17 @@ export default function AdminLogin() {
   useEffect(() => {
     if (localStorage.getItem("adminAuth") === ADMIN_PASSWORD) {
       setLocation("/admin");
+      return;
     }
-  }, []);
+    // If already signed in with admin email via Clerk, auto-grant access
+    if (isLoaded && user) {
+      const userEmail = user.emailAddresses[0]?.emailAddress ?? "";
+      if (userEmail === ADMIN_EMAIL) {
+        localStorage.setItem("adminAuth", ADMIN_PASSWORD);
+        setLocation("/admin");
+      }
+    }
+  }, [isLoaded, user]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
