@@ -4,6 +4,7 @@ import {
   Bookmark, Pin, Flame, Crown, Sparkles, Image as ImageIcon, LogOut,
 } from "lucide-react";
 import { useUser, useClerk } from "@clerk/react";
+import { AdBanner } from "@/components/ad-banner";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -381,6 +382,9 @@ export function ChatSidebar({
           )}
         </div>
       </ScrollArea>
+
+      {/* Ad banner */}
+      <AdBanner />
 
       {/* Footer */}
       <div className="px-3.5 py-3 border-t border-sidebar-border space-y-2.5">

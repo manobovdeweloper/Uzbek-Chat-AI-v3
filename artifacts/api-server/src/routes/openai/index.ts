@@ -9,9 +9,12 @@ import { CreateOpenaiConversationBody, SendOpenaiMessageBody, GetOpenaiConversat
 const router = Router();
 
 router.get("/conversations", async (req, res) => {
+  const auth = getAuth(req);
+  const userId = auth?.userId ?? null;
   const result = await db
     .select()
     .from(conversations)
+    .where(userId ? eq(conversations.userId, userId) : eq(conversations.id, -1))
     .orderBy(desc(conversations.createdAt));
   res.json(result);
 });

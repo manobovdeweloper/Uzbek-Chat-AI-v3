@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { conversations, messages } from "@workspace/db";
-import { desc, count, sql } from "drizzle-orm";
+import { conversations, messages, ads } from "@workspace/db";
+import { desc, count, sql, eq } from "drizzle-orm";
 
 const ADMIN_EMAIL = "abdullohmanopov24@gmail.com";
 const ADMIN_PASSWORD = "manobov1122";
@@ -47,27 +47,63 @@ router.get("/stats", requireAdminSecret, async (_req, res) => {
     .limit(20);
 
   const msgPerConv = await db
-    .select({
-      conversationId: messages.conversationId,
-      msgCount: count(messages.id),
-    })
+    .select({ conversationId: messages.conversationId, msgCount: count(messages.id) })
     .from(messages)
     .groupBy(messages.conversationId);
 
   const msgMap: Record<number, number> = {};
-  for (const row of msgPerConv) {
-    msgMap[row.conversationId] = Number(row.msgCount);
-  }
+  for (const row of msgPerConv) msgMap[row.conversationId] = Number(row.msgCount);
 
   res.json({
     totalConversations: Number(totalConvs.count),
     totalMessages: Number(totalMsgs.count),
     totalUsers: userRows.length,
-    recentConversations: recentConvs.map((c) => ({
-      ...c,
-      messageCount: msgMap[c.id] ?? 0,
-    })),
+    recentConversations: recentConvs.map((c) => ({ ...c, messageCount: msgMap[c.id] ?? 0 })),
   });
+});
+
+router.get("/ads", requireAdminSecret, async (_req, res) => {
+  const result = await db.select().from(ads).orderBy(desc(ads.createdAt));
+  res.json(result);
+});
+
+router.post("/ads", requireAdminSecret, async (req, res) => {
+  const { title, description, linkUrl, imageUrl, isActive } = req.body as {
+    title?: string; description?: string; linkUrl?: string; imageUrl?: string; isActive?: boolean;
+  };
+  if (!title?.trim()) {
+    res.status(400).json({ error: "Sarlavha majburiy" });
+    return;
+  }
+  const [ad] = await db
+    .insert(ads)
+    .values({ title: title.trim(), description: description ?? null, linkUrl: linkUrl ?? null, imageUrl: imageUrl ?? null, isActive: isActive ?? true })
+    .returning();
+  res.status(201).json(ad);
+});
+
+router.patch("/ads/:id", requireAdminSecret, async (req, res) => {
+  const id = Number(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  const { title, description, linkUrl, imageUrl, isActive } = req.body as {
+    title?: string; description?: string; linkUrl?: string; imageUrl?: string; isActive?: boolean;
+  };
+  const updates: Record<string, unknown> = {};
+  if (title !== undefined) updates.title = title.trim();
+  if (description !== undefined) updates.description = description;
+  if (linkUrl !== undefined) updates.linkUrl = linkUrl;
+  if (imageUrl !== undefined) updates.imageUrl = imageUrl;
+  if (isActive !== undefined) updates.isActive = isActive;
+  const [ad] = await db.update(ads).set(updates).where(eq(ads.id, id)).returning();
+  if (!ad) { res.status(404).json({ error: "Reklama topilmadi" }); return; }
+  res.json(ad);
+});
+
+router.delete("/ads/:id", requireAdminSecret, async (req, res) => {
+  const id = Number(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  await db.delete(ads).where(eq(ads.id, id));
+  res.json({ ok: true });
 });
 
 export default router;
