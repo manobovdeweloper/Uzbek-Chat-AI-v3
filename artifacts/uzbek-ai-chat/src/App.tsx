@@ -84,28 +84,72 @@ const clerkAppearance = {
   },
 };
 
+function AuthBackground() {
+  return (
+    <div className="fixed inset-0 overflow-hidden pointer-events-none">
+      <div className="absolute inset-0 bg-[#07070f]" />
+      <div className="absolute inset-0" style={{
+        backgroundImage: "radial-gradient(ellipse 80% 50% at 50% -10%, rgba(124,58,237,0.25) 0%, transparent 70%)",
+      }} />
+      <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full opacity-5"
+        style={{ background: "radial-gradient(circle, #7c3aed, transparent)", filter: "blur(60px)" }} />
+      <div className="absolute bottom-1/4 right-1/4 w-80 h-80 rounded-full opacity-5"
+        style={{ background: "radial-gradient(circle, #4f46e5, transparent)", filter: "blur(60px)" }} />
+      {[...Array(18)].map((_, i) => (
+        <div key={i} className="absolute rounded-full bg-purple-500/20"
+          style={{
+            width: `${2 + (i % 4)}px`, height: `${2 + (i % 4)}px`,
+            top: `${(i * 17 + 5) % 90}%`, left: `${(i * 23 + 7) % 90}%`,
+            animation: `pulse ${2 + (i % 3)}s ease-in-out infinite`,
+            animationDelay: `${(i * 0.4) % 3}s`,
+          }} />
+      ))}
+      <div className="absolute inset-0 opacity-[0.015]"
+        style={{ backgroundImage: "linear-gradient(rgba(255,255,255,0.15) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.15) 1px, transparent 1px)", backgroundSize: "60px 60px" }} />
+    </div>
+  );
+}
+
+const features = [
+  { icon: "💬", text: "O'zbek tilida suhbat" },
+  { icon: "🖼️", text: "AI rasm yaratish" },
+  { icon: "⚡", text: "Tezkor javoblar" },
+  { icon: "🔒", text: "Xavfsiz va shaxsiy" },
+];
+
 function SignInPage() {
   return (
-    <div className="flex min-h-[100dvh] items-center justify-center bg-[#0a0a14] px-4"
-      style={{ backgroundImage: "radial-gradient(ellipse at 50% 0%, rgba(124,58,237,0.12) 0%, transparent 60%)" }}>
-      <div className="w-full max-w-md">
+    <div className="relative flex min-h-[100dvh] items-center justify-center px-4 py-8">
+      <AuthBackground />
+      <div className="relative z-10 w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2 mb-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-purple-500/30">
-              <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-            </div>
-            <span className="text-xl font-bold text-white">O'zbek AI</span>
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4"
+            style={{ background: "linear-gradient(135deg, #7c3aed, #4f46e5)", boxShadow: "0 0 40px rgba(124,58,237,0.5), 0 0 80px rgba(124,58,237,0.2)" }}>
+            <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
           </div>
-          <p className="text-gray-500 text-sm">Uzbekiston'ning aqlli yordamchisi</p>
+          <h1 className="text-3xl font-black text-white tracking-tight mb-1">O'zbek AI</h1>
+          <p className="text-gray-400 text-sm">Uzbekiston'ning aqlli yordamchisi</p>
+          <div className="flex flex-wrap items-center justify-center gap-2 mt-4">
+            {features.map((f) => (
+              <span key={f.text} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium text-purple-300 border border-purple-500/25 bg-purple-500/8">
+                <span>{f.icon}</span>{f.text}
+              </span>
+            ))}
+          </div>
         </div>
-        <SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} />
+        <div style={{ filter: "drop-shadow(0 25px 50px rgba(0,0,0,0.6))" }}>
+          <SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} />
+        </div>
         <p className="text-center text-xs text-gray-600 mt-4">
           Admin?{" "}
           <a href={`${basePath}/admin/login`} className="text-purple-500 hover:text-purple-400 underline">
             Admin paneliga kirish
           </a>
+        </p>
+        <p className="text-center text-[11px] text-gray-700 mt-3">
+          MANOBOV &amp; MRX tomonidan yaratilgan
         </p>
       </div>
     </div>
@@ -114,21 +158,25 @@ function SignInPage() {
 
 function SignUpPage() {
   return (
-    <div className="flex min-h-[100dvh] items-center justify-center bg-[#0a0a14] px-4"
-      style={{ backgroundImage: "radial-gradient(ellipse at 50% 0%, rgba(124,58,237,0.12) 0%, transparent 60%)" }}>
-      <div className="w-full max-w-md">
+    <div className="relative flex min-h-[100dvh] items-center justify-center px-4 py-8">
+      <AuthBackground />
+      <div className="relative z-10 w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2 mb-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-purple-500/30">
-              <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-            </div>
-            <span className="text-xl font-bold text-white">O'zbek AI</span>
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4"
+            style={{ background: "linear-gradient(135deg, #7c3aed, #4f46e5)", boxShadow: "0 0 40px rgba(124,58,237,0.5), 0 0 80px rgba(124,58,237,0.2)" }}>
+            <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
           </div>
-          <p className="text-gray-500 text-sm">Hisob yarating — bepul!</p>
+          <h1 className="text-3xl font-black text-white tracking-tight mb-1">O'zbek AI</h1>
+          <p className="text-gray-400 text-sm">Hisob yarating — bepul!</p>
         </div>
-        <SignUp routing="path" path={`${basePath}/sign-up`} signInUrl={`${basePath}/sign-in`} />
+        <div style={{ filter: "drop-shadow(0 25px 50px rgba(0,0,0,0.6))" }}>
+          <SignUp routing="path" path={`${basePath}/sign-up`} signInUrl={`${basePath}/sign-in`} />
+        </div>
+        <p className="text-center text-[11px] text-gray-700 mt-3">
+          MANOBOV &amp; MRX tomonidan yaratilgan
+        </p>
       </div>
     </div>
   );
