@@ -96,14 +96,24 @@ export default function AdminPanel() {
     localStorage.getItem("adminAuth") === ADMIN_PASSWORD || isClerkAdmin();
 
   useEffect(() => {
-    if (!isLoaded) return; // wait for Clerk to load
-    // If signed in as admin via Clerk, auto-grant localStorage token
+    // If Clerk not loaded yet, wait max 3s then fall back to localStorage check
+    if (!isLoaded) {
+      const fallback = setTimeout(() => {
+        if (localStorage.getItem("adminAuth") !== ADMIN_PASSWORD) {
+          setLocation("/admin/login");
+        } else {
+          fetchAll();
+          if (!pollRef.current) pollRef.current = setInterval(fetchStats, 30_000);
+        }
+      }, 3000);
+      return () => clearTimeout(fallback);
+    }
+    // Clerk is loaded — grant token if admin email
     if (isClerkAdmin()) {
       localStorage.setItem("adminAuth", ADMIN_PASSWORD);
     }
     if (!isAuthed()) { setLocation("/admin/login"); return; }
     fetchAll();
-    // Poll stats every 30s for real-time online count
     if (!pollRef.current) {
       pollRef.current = setInterval(fetchStats, 30_000);
     }
