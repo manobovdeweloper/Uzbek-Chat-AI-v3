@@ -1,5 +1,7 @@
+modules = ["nodejs-20"]
 [agent]
 expertMode = true
+integrations = ["github:1.0.0"]
 
 [[ports]]
 localPort = 8080
@@ -12,3 +14,6 @@ externalPort = 3000
 [[ports]]
 localPort = 21045
 externalPort = 80
+
+[nix]
+channel = "stable-25_05"
