@@ -90,6 +90,19 @@ export function ChatSidebar({
   const streak = useStreak();
   const { isPinned, toggle: togglePin } = usePinned();
   const [themeIconSpin, setThemeIconSpin] = useState(false);
+  const [onlineCount, setOnlineCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    const fetchOnline = () => {
+      fetch("/api/public/online", { cache: "no-store" })
+        .then((r) => r.json())
+        .then((d: { count: number }) => setOnlineCount(d.count))
+        .catch(() => {});
+    };
+    fetchOnline();
+    const t = setInterval(fetchOnline, 30_000);
+    return () => clearInterval(t);
+  }, []);
 
   const handleToggleTheme = () => {
     setThemeIconSpin(true);
@@ -205,13 +218,19 @@ export function ChatSidebar({
             </div>
             <div>
               <h1 className="text-sm font-bold text-sidebar-foreground">O'zbek AI</h1>
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 flex-wrap">
                 {isPremium
                   ? <span className="text-[10px] font-bold text-primary flex items-center gap-0.5"><Crown className="w-2.5 h-2.5" />Premium</span>
                   : <span className="text-[10px] text-sidebar-foreground/30">Bepul · v5.2</span>}
                 {streak >= 2 && (
-                  <span className="flex items-center gap-0.5 text-[10px] font-bold text-amber-400 ml-1">
+                  <span className="flex items-center gap-0.5 text-[10px] font-bold text-amber-400">
                     <Flame className="w-2.5 h-2.5 streak-glow" />{streak}
+                  </span>
+                )}
+                {onlineCount !== null && (
+                  <span className="flex items-center gap-1 text-[10px] font-semibold text-emerald-400">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse inline-block" />
+                    {onlineCount} onlayn
                   </span>
                 )}
               </div>

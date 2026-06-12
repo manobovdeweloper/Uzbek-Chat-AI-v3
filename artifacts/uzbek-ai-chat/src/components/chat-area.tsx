@@ -235,8 +235,8 @@ export function ChatArea({
       {/* ── TOP BAR ─────────────────────────────────────────────────── */}
       <div className="flex items-center gap-1.5 md:gap-2 px-2 md:px-3 py-2 border-b border-border glass-strong flex-shrink-0 z-10">
         <Button variant="ghost" size="icon" onClick={onToggleSidebar}
-          className="shrink-0 h-9 w-9 md:h-8 md:w-8" data-testid="button-toggle-sidebar">
-          {isSidebarOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+          className="shrink-0 h-10 w-10 md:h-8 md:w-8 rounded-xl bg-muted/60 md:bg-transparent border border-border/40 md:border-transparent hover:bg-muted transition-all" data-testid="button-toggle-sidebar">
+          {isSidebarOpen ? <X className="w-5 h-5 md:w-4 md:h-4" /> : <Menu className="w-5 h-5 md:w-4 md:h-4" />}
         </Button>
 
         {searchOpen ? (

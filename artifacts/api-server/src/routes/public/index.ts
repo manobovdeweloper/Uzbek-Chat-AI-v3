@@ -2,7 +2,7 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import { ads, announcements } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
-import { recordHeartbeat } from "../admin/index.js";
+import { recordHeartbeat, getOnlineCount } from "../admin/index.js";
 
 const router = Router();
 
@@ -23,6 +23,11 @@ router.get("/announcements", async (_req, res) => {
     .where(eq(announcements.isActive, true))
     .orderBy(desc(announcements.isPinned), desc(announcements.createdAt));
   res.json(result);
+});
+
+router.get("/online", (_req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+  res.json({ count: getOnlineCount() });
 });
 
 router.post("/heartbeat", (req, res) => {
