@@ -1,0 +1,8 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "4Xwna1h852YarIKhTFEa_"
+uri = "file://artifacts/uzbek-ai-mobile/assets/images/icon.png"
+type = "image"
+title = "uzbek ai icon"
