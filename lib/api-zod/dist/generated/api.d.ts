@@ -17,4 +17,174 @@ export declare const HealthCheckResponse: zod.ZodObject<{
 }, {
     status: string;
 }>;
+/**
+ * @summary List all conversations
+ */
+export declare const ListOpenaiConversationsResponseItem: zod.ZodObject<{
+    id: zod.ZodNumber;
+    title: zod.ZodString;
+    createdAt: zod.ZodDate;
+}, "strip", zod.ZodTypeAny, {
+    id: number;
+    title: string;
+    createdAt: Date;
+}, {
+    id: number;
+    title: string;
+    createdAt: Date;
+}>;
+export declare const ListOpenaiConversationsResponse: zod.ZodArray<zod.ZodObject<{
+    id: zod.ZodNumber;
+    title: zod.ZodString;
+    createdAt: zod.ZodDate;
+}, "strip", zod.ZodTypeAny, {
+    id: number;
+    title: string;
+    createdAt: Date;
+}, {
+    id: number;
+    title: string;
+    createdAt: Date;
+}>, "many">;
+/**
+ * @summary Create a new conversation
+ */
+export declare const CreateOpenaiConversationBody: zod.ZodObject<{
+    title: zod.ZodString;
+}, "strip", zod.ZodTypeAny, {
+    title: string;
+}, {
+    title: string;
+}>;
+/**
+ * @summary Get conversation with messages
+ */
+export declare const GetOpenaiConversationParams: zod.ZodObject<{
+    id: zod.ZodNumber;
+}, "strip", zod.ZodTypeAny, {
+    id: number;
+}, {
+    id: number;
+}>;
+export declare const GetOpenaiConversationResponse: zod.ZodObject<{
+    id: zod.ZodNumber;
+    title: zod.ZodString;
+    createdAt: zod.ZodDate;
+    messages: zod.ZodArray<zod.ZodObject<{
+        id: zod.ZodNumber;
+        conversationId: zod.ZodNumber;
+        role: zod.ZodString;
+        content: zod.ZodString;
+        createdAt: zod.ZodDate;
+    }, "strip", zod.ZodTypeAny, {
+        id: number;
+        createdAt: Date;
+        conversationId: number;
+        role: string;
+        content: string;
+    }, {
+        id: number;
+        createdAt: Date;
+        conversationId: number;
+        role: string;
+        content: string;
+    }>, "many">;
+}, "strip", zod.ZodTypeAny, {
+    id: number;
+    title: string;
+    createdAt: Date;
+    messages: {
+        id: number;
+        createdAt: Date;
+        conversationId: number;
+        role: string;
+        content: string;
+    }[];
+}, {
+    id: number;
+    title: string;
+    createdAt: Date;
+    messages: {
+        id: number;
+        createdAt: Date;
+        conversationId: number;
+        role: string;
+        content: string;
+    }[];
+}>;
+/**
+ * @summary Delete a conversation
+ */
+export declare const DeleteOpenaiConversationParams: zod.ZodObject<{
+    id: zod.ZodNumber;
+}, "strip", zod.ZodTypeAny, {
+    id: number;
+}, {
+    id: number;
+}>;
+/**
+ * @summary List messages in a conversation
+ */
+export declare const ListOpenaiMessagesParams: zod.ZodObject<{
+    id: zod.ZodNumber;
+}, "strip", zod.ZodTypeAny, {
+    id: number;
+}, {
+    id: number;
+}>;
+export declare const ListOpenaiMessagesResponseItem: zod.ZodObject<{
+    id: zod.ZodNumber;
+    conversationId: zod.ZodNumber;
+    role: zod.ZodString;
+    content: zod.ZodString;
+    createdAt: zod.ZodDate;
+}, "strip", zod.ZodTypeAny, {
+    id: number;
+    createdAt: Date;
+    conversationId: number;
+    role: string;
+    content: string;
+}, {
+    id: number;
+    createdAt: Date;
+    conversationId: number;
+    role: string;
+    content: string;
+}>;
+export declare const ListOpenaiMessagesResponse: zod.ZodArray<zod.ZodObject<{
+    id: zod.ZodNumber;
+    conversationId: zod.ZodNumber;
+    role: zod.ZodString;
+    content: zod.ZodString;
+    createdAt: zod.ZodDate;
+}, "strip", zod.ZodTypeAny, {
+    id: number;
+    createdAt: Date;
+    conversationId: number;
+    role: string;
+    content: string;
+}, {
+    id: number;
+    createdAt: Date;
+    conversationId: number;
+    role: string;
+    content: string;
+}>, "many">;
+/**
+ * @summary Send a text message and receive a streaming text response
+ */
+export declare const SendOpenaiMessageParams: zod.ZodObject<{
+    id: zod.ZodNumber;
+}, "strip", zod.ZodTypeAny, {
+    id: number;
+}, {
+    id: number;
+}>;
+export declare const SendOpenaiMessageBody: zod.ZodObject<{
+    content: zod.ZodString;
+}, "strip", zod.ZodTypeAny, {
+    content: string;
+}, {
+    content: string;
+}>;
 //# sourceMappingURL=api.d.ts.map
