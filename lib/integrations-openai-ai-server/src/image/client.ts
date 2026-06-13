@@ -20,7 +20,7 @@ export async function generateImageBuffer(
     prompt,
     size,
   });
-  const base64 = response.data[0]?.b64_json ?? "";
+  const base64 = response.data?.[0]?.b64_json ?? "";
   return Buffer.from(base64, "base64");
 }
 
@@ -43,11 +43,11 @@ export async function editImages(
 
   const response = await openai.images.edit({
     model: "gpt-image-1",
-    image: images,
+    image: images as any, // Add as any here because types might differ
     prompt,
   });
 
-  const imageBase64 = response.data[0]?.b64_json ?? "";
+  const imageBase64 = response.data?.[0]?.b64_json ?? "";
   const imageBytes = Buffer.from(imageBase64, "base64");
 
   if (outputPath) {

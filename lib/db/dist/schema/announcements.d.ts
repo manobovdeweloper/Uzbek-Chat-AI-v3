@@ -146,9 +146,9 @@ export declare const insertAnnouncementSchema: z.ZodObject<{
     title: z.ZodString;
     content: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     linkUrl: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    isActive: z.ZodOptional<z.ZodBoolean>;
     linkLabel: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     isPinned: z.ZodOptional<z.ZodBoolean>;
-    isActive: z.ZodOptional<z.ZodBoolean>;
 }, {
     out: {};
     in: {};
